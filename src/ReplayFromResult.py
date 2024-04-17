@@ -686,8 +686,8 @@ class ReplayPyPlot(Replay):
             images = []
             for filename in images_p:
                 images.append(imageio.imread(filename))
-            imageio.mimsave(os.path.join(self.plots_dir, video_name), images)
-            print("Video created: {}".format(os.path.join(self.plots_dir, video_name)))
+            imageio.mimsave(os.path.join(self.plots_dir, '..', video_name), images)
+            print("Video created: {}".format(os.path.join(self.plots_dir, '..', video_name)))
 
     def _emit_current_information(self):
         list_pos_df = pd.DataFrame([veh.get_veh_state(self.replay_time) for veh in self.replay_vehicles.values()])
