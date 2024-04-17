@@ -670,7 +670,7 @@ class ReplayPyPlot(Replay):
             self._plot_class_instance.join()
             self._manager.shutdown()
             
-        if self.create_images:
+        elif self.create_images:
             print("start creating the video!")
             import imageio
             import os
