@@ -178,9 +178,9 @@ def check_assertions(list_eval_df, all_scenario_assertion_dict):
                 tmp_df.loc[k, MM_STR] = v
                 mismatch = True
         if mismatch:
-            prt_str = f"Scenario {scenario_name} has mismatch with assertions:/n{tmp_df}/n" + "-"*80 + "/n"
+            prt_str = f"Scenario {scenario_name} has mismatch with assertions:\n{tmp_df}\n" + "-"*80 + "\n"
         else:
-            prt_str = f"Scenario {scenario_name} results match assertions/n" + "-"*80 + "/n"
+            prt_str = f"Scenario {scenario_name} results match assertions\n" + "-"*80 + "\n"
         print(prt_str)
         with open(LOG_F, "a") as fh:
             fh.write(prt_str)
