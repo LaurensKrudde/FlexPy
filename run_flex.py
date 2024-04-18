@@ -206,7 +206,7 @@ if __name__ == "__main__":
         with open(LOG_F, "w") as _:
             pass
 
-        scs_path = os.path.join(os.path.dirname(__file__), "studies", "example_study", "scenarios")
+        scs_path = os.path.join(os.path.dirname(__file__), "studies", "hellevoetsluis", "scenarios")
         
         # Flex test
         log_level = "info"

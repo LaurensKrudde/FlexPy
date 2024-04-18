@@ -400,7 +400,6 @@ def createNetwork(network_name, bbox=None, polygon=None, by_name=None, network_t
 
 if __name__ == "__main__":
     
-    # example bounding box for maxvorstadt munich
-    bbox = (48.169132, 48.134374, 11.589895, 11.551004)
-    name = "osm_maxvorstadt"
-    createNetwork(name, bbox=bbox, network_type="all")
+    # Get Hellevoetsluis by name
+    name = "hellevoetsluis_network_osm"
+    createNetwork(name, by_name="Hellevoetsluis", network_type="drive")
