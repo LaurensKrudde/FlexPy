@@ -269,6 +269,10 @@ class NetworkOSMCreator():
             edge_pd_list.append( edge.getAttributeDictBaseFile() )
         edge_pd = pd.DataFrame(edge_pd_list)
         edge_pd.to_csv(os.path.join(path, "edges.csv"), index=False)
+
+    def createCRSfile(self, path):
+        with open(os.path.join(path, "crs.info"), "w") as file:
+            file.write(self.networkXGraph.graph["crs"])
         
 
 
@@ -394,6 +398,7 @@ def createNetwork(network_name, bbox=None, polygon=None, by_name=None, network_t
         nw.convert_crs(from_crs_to_crs[0], from_crs_to_crs[1])
     nw.convertBaseInformationToCSV(base_folder)
     nw.convertFullInformationToGeoJSON(base_folder)
+    nw.createCRSfile(base_folder)
 
 
 
