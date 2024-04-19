@@ -73,12 +73,12 @@
         }
     ],
     "directories": {
-        "main": "C:\\Users\\z004w6wr\\Documents\\FlexPy",
-        "data": "C:\\Users\\z004w6wr\\Documents\\FlexPy\\data",
-        "output": "C:\\Users\\z004w6wr\\Documents\\FlexPy\\studies\\hellevoetsluis\\results\\first_flex_test",
-        "network": "C:\\Users\\z004w6wr\\Documents\\FlexPy\\data\\networks\\hellevoetsluis_network_osm",
-        "vehicles": "C:\\Users\\z004w6wr\\Documents\\FlexPy\\data\\vehicles",
-        "fleetctrl": "C:\\Users\\z004w6wr\\Documents\\FlexPy\\data\\fleetctrl",
-        "demand": "C:\\Users\\z004w6wr\\Documents\\FlexPy\\data\\demand\\hellevoetsluis\\matched\\hellevoetsluis_network_osm"
+        "main": "C:\\Users\\laure\\Documents\\Master Thesis\\FlexPy",
+        "data": "C:\\Users\\laure\\Documents\\Master Thesis\\FlexPy\\data",
+        "output": "C:\\Users\\laure\\Documents\\Master Thesis\\FlexPy\\studies\\hellevoetsluis\\results\\first_flex_test",
+        "network": "C:\\Users\\laure\\Documents\\Master Thesis\\FlexPy\\data\\networks\\hellevoetsluis_network_osm",
+        "vehicles": "C:\\Users\\laure\\Documents\\Master Thesis\\FlexPy\\data\\vehicles",
+        "fleetctrl": "C:\\Users\\laure\\Documents\\Master Thesis\\FlexPy\\data\\fleetctrl",
+        "demand": "C:\\Users\\laure\\Documents\\Master Thesis\\FlexPy\\data\\demand\\hellevoetsluis\\matched\\hellevoetsluis_network_osm"
     }
 }
