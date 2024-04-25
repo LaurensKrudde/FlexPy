@@ -1,6 +1,7 @@
 import os
 from multiprocessing import Process
 import numpy as np
+import pandas as pd
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
@@ -44,6 +45,11 @@ class PyPlot(Process):
         self.bg_map_path = os.path.join(nw_dir, "downloaded_map.tif")
         self.shared_dict: dict = shared_dict
         self.plot_folder: Path = Path(plot_folder) if plot_folder else None
+
+        # Boarding points (hardcoded for hellevoetsluis TODO: make it dynamic)
+        data_folder = os.path.dirname(os.path.dirname(nw_dir))
+        boarding_points_df = pd.read_csv(os.path.join(data_folder, "infra", "hellevoetsluis_infra", "hellevoetsluis_network_osm", "boarding_points.csv"))
+        self.boarding_points_x, self.boarding_points_y = self.convert_lat_lon(boarding_points_df["lat"].values, boarding_points_df["lon"].values)
 
         self.fig, self.grid_spec, self.axes = None, None, None
         self.plot_extent = plot_extent
@@ -203,6 +209,10 @@ class PyPlot(Process):
                 lons, lats = list(zip(*coords))
                 x, y = self.convert_lat_lon(lats, lons)
             axes[3].scatter(x, y, s=VEHICLE_POINT_SIZE, label=possible_status[i],color = color_list[i])
+
+        # Plot boarding points TODO only plot if boarding points file used
+        axes[3].scatter(self.boarding_points_x, self.boarding_points_y, s=10, color="red", marker='^')
+
         axes[3].legend(loc="lower left")
         axes[3].axis('off')
         rounded_simulation_time = self.shared_dict["simulation_time"]- timedelta(microseconds=self.shared_dict["simulation_time"].microsecond)
