@@ -30,6 +30,17 @@ def osmid_to_node_id(osmid_list):
     return [d["properties"]["node_index"] for d in network_nodes_info["features"] if d["properties"]["source_edge_id"] in osmid_list]
 
 
+def osmid_to_coord(osmid_list):
+
+    with open(os.path.join(NETWORK_DIR, network_name, "base", "nodes_all_infos.geojson")) as f:
+        network_nodes_info = json.load(f)
+
+    lon = [d["geometry"]["coordinates"][0] for d in network_nodes_info["features"] if d["properties"]["source_edge_id"] in osmid_list]
+    lat = [d["geometry"]["coordinates"][1] for d in network_nodes_info["features"] if d["properties"]["source_edge_id"] in osmid_list]
+
+    return lon, lat
+
+
 def create_bus_stop_nodes_csv(osm_larger_network_name, osm_busline_name, gis_name, network_name):
 
     bus_query_json = query_busline_overpass_turbo(osm_larger_network_name, osm_busline_name)
@@ -40,8 +51,13 @@ def create_bus_stop_nodes_csv(osm_larger_network_name, osm_busline_name, gis_nam
 
     stop_nodes_network_node_ids = osmid_to_node_id(stop_nodes_network_osmids)
 
-    boarding_points_df = pd.DataFrame({'node_index': stop_nodes_network_node_ids, 'osmid': stop_nodes_network_osmids})
-    boarding_points_df.to_csv(os.path.join(INFRA_DIR, gis_name, network_name, "bus_stop_nodes.csv"), index=False)
+    lon, lat = osmid_to_coord(stop_nodes_network_osmids)
+
+    boarding_points_df = pd.DataFrame({'node_index': stop_nodes_network_node_ids,
+                                       'osmid': stop_nodes_network_osmids, 
+                                       'lon': lon,
+                                       'lat': lat})
+    boarding_points_df.to_csv(os.path.join(INFRA_DIR, gis_name, network_name, "boarding_points.csv"), index=False)
 
 
 if __name__ == "__main__":
