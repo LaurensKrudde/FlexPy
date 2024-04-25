@@ -123,6 +123,13 @@ class NetworkOSMCreator():
             exit()
         if polygon is not None:
             G = ox.graph_from_polygon(polygon, network_type = network_type)
+        
+        # Hardcoded for now TODO
+        elif by_name == "Hellevoetsluis_Oudenhoorn":
+            G1 = ox.graph_from_place("Hellevoetsluis", network_type=network_type, truncate_by_edge=True)
+            G2 = ox.graph_from_place("Oudenhoorn", network_type=network_type, truncate_by_edge=True)
+            G = nx.compose(G1, G2)
+        
         elif by_name is not None:
             G = ox.graph_from_place(by_name, network_type=network_type)
         else:
@@ -273,7 +280,9 @@ class NetworkOSMCreator():
     def createCRSfile(self, path):
         with open(os.path.join(path, "crs.info"), "w") as file:
             file.write(self.networkXGraph.graph["crs"])
-        
+
+    def saveOriginalOSMGraph(self, path):
+        ox.io.save_graphml(self.networkXGraph, os.path.join(path, "network.graphml"))        
 
 
 class NetworkNode():
@@ -398,13 +407,19 @@ def createNetwork(network_name, bbox=None, polygon=None, by_name=None, network_t
         nw.convert_crs(from_crs_to_crs[0], from_crs_to_crs[1])
     nw.convertBaseInformationToCSV(base_folder)
     nw.convertFullInformationToGeoJSON(base_folder)
+    nw.saveOriginalOSMGraph(base_folder)
     nw.createCRSfile(base_folder)
 
 
 
 
 if __name__ == "__main__":
+
+    network_name = "hellevoetsluis_network_osm"
     
     # Get Hellevoetsluis by name
-    name = "hellevoetsluis_network_osm"
-    createNetwork(name, by_name="Hellevoetsluis", network_type="drive")
+    createNetwork(network_name, by_name="Hellevoetsluis_Oudenhoorn", network_type="drive")
+
+    # Get hellevoetsluis by bbox (very slow... takes > 10 minutes)
+    # hellevoetsluis_oudenhoorn_bbox = (51.81259324714577,4.071979655408526,51.864565569055316,4.2177201644417295)
+    # createNetwork(network_name, bbox=hellevoetsluis_oudenhoorn_bbox, network_type="drive")
