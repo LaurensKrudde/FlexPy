@@ -313,6 +313,8 @@ G_DIR_FCTRL = "fleetctrl"
 G_DIR_BP = "boardingpoints"
 G_DIR_INFRA = "infra"
 G_DIR_PARCEL_DEMAND = "parceldemand"
+G_DIR_RESULTS = "results"
+G_DIR_SCENARIOS = "scenarios"
 
 # -------------------------------------------------------------------------------------------------------------------- #
 # General

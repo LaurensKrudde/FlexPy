@@ -1,16 +1,79 @@
-node_index,osmid,lon,lat
-462,9243532443,4.1398332,51.8340923
-512,44055098,4.1448759,51.8352901
-547,44070762,4.1327318,51.8361542
-680,44066195,4.1531513,51.8390576
-760,44059609,4.1498473,51.8408239
-788,44047876,4.1727901,51.8410887
-835,44053854,4.1369715,51.8421576
-852,44064361,4.1530996,51.8427184
-899,44058345,4.1457657,51.8439425
-915,44035657,4.1576639,51.8444909
-951,1079445095,4.164455,51.8459404
-1159,44026386,4.1321459,51.8344279
-1185,44032002,4.1474095,51.8305801
-1412,2678892750,4.1484851,51.8339663
-1720,1082313794,4.1899417,51.8291251
+,name_osm,node_index,lon,lat
+0,"Hellevoetsluis, Winkelcentrum",4473,4.1474095,51.8305801
+1,"Hellevoetsluis, Plataanlaan",451,4.1453163,51.8279647
+2,"Hellevoetsluis, Vlasakkerlaan",5759,4.1382738,51.8235694
+3,"Hellevoetsluis, Vesting",280,4.1342299,51.8246853
+4,"Hellevoetsluis, Jan Blankenstraat",1008,4.1437729,51.8321463
+5,"Hellevoetsluis, Kanaalweg",6378,4.144007,51.8342773
+6,"Hellevoetsluis, Sportlaan",1237,4.1384376,51.8345782
+7,"Hellevoetsluis, Amnesty Internationallaan",4459,4.1316843,51.8342226
+8,"Hellevoetsluis, Hoonaartstraat",4521,4.1343321,51.8384269
+9,"Hellevoetsluis, Koninginnelaan",5754,4.1397073,51.8458237
+10,"Hellevoetsluis, Jan van Brakelpad",2199,4.14631,51.8440531
+11,"Hellevoetsluis, Albert Schweitzerlaan",1919,4.1498473,51.8408239
+12,"Hellevoetsluis, Martin Luther Kinglaan",1801,4.1550784,51.8394044
+13,"Hellevoetsluis, Winkelcentrum Bonsenhoek",2028,4.1537869,51.8417423
+14,"Hellevoetsluis, Bonseweg",2179,4.1573893,51.8438556
+15,"Hellevoetsluis, Uniceflaan",2337,4.164455,51.8459404
+16,"Hellevoetsluis, Kickersbloem",4123,4.1723068,51.8407031
+0,"Oudenhoorn, Oudenhoorn",616,4.191249,51.829003
+10,"Hellevoetsluis, Amnesty Internationallaan",5283,4.1356252,51.8342943
+11,"Hellevoetsluis, Sportlaan",4603,4.1434972,51.8348452
+12,"Hellevoetsluis, Struytse Hoeck",4451,4.1480658,51.8342258
+13,"Hellevoetsluis, De Sprong",4455,4.1507969,51.8318689
+10,"Heenvliet, Heenvliet",4531,4.251669,51.8577165
+11,"Geervliet, Geervliet",6333,4.2931651,51.8587226
+12,"Spijkenisse, Laanweg",4118,4.3016639,51.8566864
+13,"Spijkenisse, Halfweg 2",2684,4.3039914,51.8547425
+14,"Spijkenisse, Zinkseweg",5930,4.3142535,51.8512362
+15,"Spijkenisse, De Ritte",4915,4.323455,51.8460718
+16,"Spijkenisse, Metro Centrum",4767,4.333437,51.8461614
+0,"Spijkenisse, Metro Centrum",4780,4.3343484,51.8466975
+1,"Spijkenisse, De Ritte",6005,4.3227732,51.8466647
+2,"Spijkenisse, Zinkseweg",2684,4.3039914,51.8547425
+7,"Hellevoetsluis, Kickersbloem",2046,4.1710704,51.8419772
+1,"Hellevoetsluis, Mandenmaker",1273,4.1664541,51.8348587
+2,"Hellevoetsluis, Kooistee",605,4.1615786,51.8288759
+3,"Hellevoetsluis, Ebstroom",251,4.1512551,51.8241734
+4,"Hellevoetsluis, Plataanlaan",232,4.1483618,51.8240187
+13,"Nieuwenhoorn, Nieuwenhoorn",2686,4.1420279,51.8551008
+14,"Brielle, G.J. van den Boogerdweg",4982,4.1601059,51.8990786
+15,"Brielle, Busstation Rugge",3762,4.1544303,51.9037771
+16,"Brielle, Brielle Centrum",4981,4.1631486,51.89879
+17,"Brielle, Nieuwland",4743,4.1704122,51.8991766
+18,"Vierpolders, Seggelant",5084,4.1849903,51.8932771
+19,"Rozenburg, Volgerweg",6589,4.2351688,51.9034548
+20,"Rozenburg, Raadhuisplein",6627,4.2487779,51.9046659
+21,"Botlek, Botlekstraat",6953,4.2609749,51.8890113
+22,"Botlek, Theemsweg",7045,4.2604347,51.8834441
+23,"Botlek, Chemieweg",6946,4.26444,51.8760651
+24,"Botlek, Welplaatweg",6411,4.2829519,51.8688327
+25,"Botlek, Esso",6970,4.302332,51.8694222
+0,"Spijkenisse, Metro Centrum",4777,4.3342427,51.8466057
+4,"Botlek, Esso",6936,4.2992488,51.8694037
+5,"Botlek, Welplaatweg",6422,4.271369,51.8704069
+6,"Botlek, Chemieweg",6948,4.2632214,51.8783756
+7,"Botlek, Theemsweg",6453,4.2597071,51.8859575
+8,"Botlek, Botlekstraat",6956,4.2621481,51.8913558
+9,"Rozenburg, Raadhuisplein",6611,4.2504649,51.9042182
+11,"Vierpolders, Seggelant",3496,4.1835633,51.8936924
+12,"Brielle, Nieuwland",4167,4.168716,51.8985799
+13,"Brielle, Brielle Centrum",4984,4.1616103,51.899174
+15,"Brielle, G.J. van den Boogerdweg",4985,4.1598685,51.8992015
+21,"Hellevoetsluis, Kanaalweg",1008,4.1437729,51.8321463
+22,"Hellevoetsluis, Jan Blankenstraat",4562,4.1389524,51.8300956
+23,"Hellevoetsluis, Vesting",249,4.1338291,51.8242156
+27,"Hellevoetsluis, Kooilaan",505,4.160245,51.8279127
+28,"Hellevoetsluis, Mandenmaker",5268,4.165629,51.8324529
+2,"Zuidland, Harregat",5477,4.2452865,51.8247516
+3,"Zuidland, Julianastraat",266,4.2552686,51.8243824
+4,"Zuidland, Stationsweg",5738,4.2578213,51.8252215
+5,"Zuidland, Zuidland Centrum",5431,4.2633228,51.8238209
+6,"Simonshaven, Simonshaven",4568,4.2890358,51.8218672
+7,"Hekelingen, Dorpsstraat",6013,4.3359484,51.8243174
+8,"Spijkenisse, Metro Heemraadlaan",4797,4.3322164,51.8380723
+9,"Spijkenisse, Hekelingseweg",5424,4.3307182,51.8434833
+1,"Spijkenisse, Hekelingseweg",4276,4.3309545,51.8413663
+2,"Spijkenisse, Metro Heemraadlaan",1550,4.3322688,51.8370728
+4,"Simonshaven, Simonshaven",210,4.2863825,51.8236935
+5,"Zuidland, Zuidland Centrum",4520,4.2627458,51.8236819

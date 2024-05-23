@@ -11,6 +11,7 @@ import multiprocessing as mp
 import src.misc.config as config
 from src.misc.init_modules import load_simulation_environment
 from src.misc.globals import *
+from src.evaluation.standard import create_eval_overview
 
 
 # main functions
@@ -208,13 +209,23 @@ if __name__ == "__main__":
 
         scs_path = os.path.join(os.path.dirname(__file__), "studies", "hellevoetsluis", "scenarios")
         
-        # Flex test
-        log_level = "info"
-        cc = os.path.join(scs_path, "constant_config_flex_test.csv")
-        sc = os.path.join(scs_path, "example_flex_test.csv")
-        run_scenarios(cc, sc, log_level=log_level, n_cpu_per_sim=1, n_parallel_sim=1)
-        list_results = read_outputs_for_comparison(cc, sc)
-        all_scenario_assert_dict = {0: {"number users": 88}}
-        check_assertions(list_results, all_scenario_assert_dict)
+        # Line 91 week test
+        # log_level = "info"
+        # scenario_name = "line91_week.csv"
+        # cc = os.path.join(scs_path, "constant_weekday.csv")
+        # sc = os.path.join(scs_path, scenario_name)
+        # run_scenarios(cc, sc, log_level=log_level, n_cpu_per_sim=1, n_parallel_sim=1)
+        # # list_results = read_outputs_for_comparison(cc, sc)
+        # # all_scenario_assert_dict = {0: {"number users": 88}}
+        # # check_assertions(list_results, all_scenario_assert_dict)
+        # eval_overview = create_eval_overview("hellevoetsluis", scenario_name)
+        # print(eval_overview)
 
-        
+        # Line 102
+        log_level = "info"
+        scenario_name = "line102_week.csv"
+        cc = os.path.join(scs_path, "constant_weekday.csv")
+        sc = os.path.join(scs_path, scenario_name)
+        run_scenarios(cc, sc, log_level=log_level, n_cpu_per_sim=1, n_parallel_sim=1)
+        eval_overview = create_eval_overview("hellevoetsluis", scenario_name)
+        print(eval_overview)

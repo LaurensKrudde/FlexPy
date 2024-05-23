@@ -23,9 +23,9 @@ BOARDER_SIZE = 1000
 
 import matplotlib.colors
 tab20 = plt.cm.get_cmap('Oranges', 20)
-cl = tab20(np.linspace(0, 1, 5))
+cl = tab20(np.linspace(0.25, 1, 4))
 STATUS_COLOR_LIST= ["lightgrey","red","blue","orange","green","dimgrey"]
-OCCUPANCY_COLOR_LIST = ['dodgerblue'] + list(cl) + ['dimgrey']
+OCCUPANCY_COLOR_LIST = ['dodgerblue'] + ['dimgrey'] + list(cl) + ['limegreen']
 
 
 class PyPlot(Process):

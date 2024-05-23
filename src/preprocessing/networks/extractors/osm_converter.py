@@ -10,6 +10,7 @@ import networkx as nx
 script_dir = os.path.abspath(os.path.dirname(__file__))
 FLEETPY_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(script_dir))))
 NETWORK_DIR = os.path.join(FLEETPY_DIR, "data", "networks")
+INFRA_DIR = os.path.join(FLEETPY_DIR, 'data', 'infra', 'hellevoetsluis_infra', 'hellevoetsluis_network_osm')
 
 DEFAULT_MAX_V = 30  # if no value is provided for maximum velocity on the street, this is the default value (kmh)
 MIN_MAX_V = 20  # minimal value for the maximum velocity on the street (kmh) | overwrites data from osm if below
@@ -129,7 +130,13 @@ class NetworkOSMCreator():
             G1 = ox.graph_from_place("Hellevoetsluis", network_type=network_type, truncate_by_edge=True)
             G2 = ox.graph_from_place("Oudenhoorn", network_type=network_type, truncate_by_edge=True)
             G = nx.compose(G1, G2)
-        
+        elif by_name == "Voorne_Putten_Rozenburg":
+            G1 = ox.graph_from_place("Voorne-Putten", network_type=network_type, truncate_by_edge=True)
+            G2 = ox.graph_from_place("Rozenburg eiland", network_type=network_type, truncate_by_edge=True)
+            G_hartelbrug = ox.graph_from_point((51.8648, 4.2993), dist=1000, network_type=network_type, truncate_by_edge=True) 
+            G_dammenweg = ox.graph_from_point((51.8989, 4.2089), dist=1000, network_type=network_type, truncate_by_edge=True) 
+            G = nx.compose_all([G1, G2, G_hartelbrug, G_dammenweg])
+
         elif by_name is not None:
             G = ox.graph_from_place(by_name, network_type=network_type)
         else:
@@ -138,10 +145,13 @@ class NetworkOSMCreator():
 
     def createNetworkFromNetwokXGraph(self, speed_unit="kmh"):
         osm_G = self.networkXGraph
+
+        # Create nodes
         node_id_to_index = {}
         node_index_to_id = {}
         node_index_to_infos = {}
         c = 0
+        
         for e_id, data in osm_G.nodes(data=True):
             if node_id_to_index.get(e_id, None) is not None:
                 print("error for {}".format(e_id))
@@ -154,6 +164,8 @@ class NetworkOSMCreator():
             c+=1
 
         print("Number nodes: {}".format(c))
+
+        # Create edges
         arcs = {}
         for u, v, key, data in osm_G.edges(keys=True, data=True):
             start_node = node_id_to_index[u]
@@ -163,16 +175,20 @@ class NetworkOSMCreator():
                 print(u, v, data)
                 print(arcs.get(start_node, {}).get(end_node,None))
                 continue
+            # Try to add end_node to start_node dict, except the dict does not yet exist, then create it
             try:
                 arcs[start_node][end_node] = data
             except:
                 arcs[start_node] = {end_node : data}
+
         for start_node, end_dict in arcs.items():
-            #print('')
+            
             for end_node, data in end_dict.items():
                 print(start_node, end_node, data)
                 l = data['length']
                 max_v_str = data.get('maxspeed')
+
+                # Handle max speeds
                 if type(max_v_str) == list:
                     max_max_v = None
                     for x in max_v_str:
@@ -206,22 +222,81 @@ class NetworkOSMCreator():
                 elif max_v > MAX_MAX_V:
                     print("maximal street velocity {} above threshold {}. Changing value to threshold.".format(max_v, MAX_MAX_V))
                     max_v = MAX_MAX_V
+
                 roadtype = data.get('highway', '')
                 if type(roadtype) == list:
                     roadtype = ";".join(roadtype)
+
                 polyline = []
                 if data.get("geometry"):
                     polyline = list(data["geometry"].coords)
                 if len(polyline) == 0:
                     polyline = [self.nodes[start_node].coordinates, self.nodes[end_node].coordinates]
+
                 osmid = data.get("osmid", None)
                 if type(osmid) == list:
                     print("multiple osmids! take first")
                     osmid = osmid[0]
-                edge = NetworkEdge(start_node, end_node, float(data["length"])/max_v*3.6, float(data["length"]), source_edge_id=osmid, roadtype=roadtype, polyline=polyline, edge_index="{};{}".format(start_node, end_node))
+
+                edge = NetworkEdge(
+                    start_node, 
+                    end_node, 
+                    float(data["length"])/max_v*3.6, 
+                    float(data["length"]), 
+                    source_edge_id=osmid, 
+                    roadtype=roadtype, 
+                    polyline=polyline, 
+                    edge_index="{};{}".format(start_node, end_node)
+                )
+
                 #print("tt ", float(data["length"])/max_v*3.6, "length", float(data["length"]))
+
                 self.addEdge(edge)
-        #self.plotNetwork()
+
+        self.plotNetwork()
+
+
+    def splitEdge(self, edge_id, split_coord):
+        """
+        Splits an edge into two at the specified coordinates and adds a new node at that point.
+        
+        :param edge_id: The identifier of the edge to split.
+        :param split_coord: A tuple (x, y) representing the coordinates where the edge should be split.
+        """
+        if edge_id not in self.edge_id_to_edge:
+            print("Edge with id {} does not exist.".format(edge_id))
+            return
+
+        # Retrieve the original edge
+        original_edge = self.edge_id_to_edge[edge_id]
+        start_node_index = original_edge.start_node_index
+        end_node_index = original_edge.end_node_index
+
+        # Create a new node at the split coordinates
+        new_node_index = len(self.nodes)
+        new_node = NetworkNode(new_node_index, split_coord[0], split_coord[1])
+        self.addNode(new_node)
+
+        # Create two new edges from the start node to the new node and from the new node to the end node
+        new_edge1 = NetworkEdge(start_node_index, new_node_index, 
+                                travel_time=original_edge.travel_time / 2,  # Simplified calculation
+                                travel_distance=original_edge.travel_distance / 2,
+                                polyline=[self.nodes[start_node_index].coordinates, split_coord])
+        new_edge2 = NetworkEdge(new_node_index, end_node_index,
+                                travel_time=original_edge.travel_time / 2,  # Simplified calculation
+                                travel_distance=original_edge.travel_distance / 2,
+                                polyline=[split_coord, self.nodes[end_node_index].coordinates])
+
+        # Add new edges to the network
+        self.addEdge(new_edge1)
+        self.addEdge(new_edge2)
+
+        # Remove the original edge
+        del self.edge_id_to_edge[edge_id]
+        self.nodes[start_node_index].outgoing_edges.pop(edge_id, None)
+        self.nodes[end_node_index].incoming_edges.pop(edge_id, None)
+
+        print("Edge {} split at coordinates {}. New edges {} and {} created.".format(edge_id, split_coord, new_edge1.id, new_edge2.id))
 
 
     def plotNetwork(self):
@@ -239,6 +314,10 @@ class NetworkOSMCreator():
             x = [supernode.polygon[i%len(supernode.polygon)][0] for i in range(len(supernode.polygon) + 1)]
             y = [supernode.polygon[i%len(supernode.polygon)][1] for i in range(len(supernode.polygon) + 1)]
             plt.plot(x, y, "g-")
+
+        # Flexcode plot boarding points
+        boarding_points_df = pd.read_csv(os.path.join(INFRA_DIR, 'line105a_stops.csv'))
+        plt.plot(boarding_points_df['lon'], boarding_points_df['lat'], "go")
 
         plt.show()
 
@@ -414,11 +493,10 @@ def createNetwork(network_name, bbox=None, polygon=None, by_name=None, network_t
 
 
 if __name__ == "__main__":
-
-    network_name = "hellevoetsluis_network_osm"
     
     # Get Hellevoetsluis by name
-    createNetwork(network_name, by_name="Hellevoetsluis_Oudenhoorn", network_type="drive")
+    network_name = "hellevoetsluis_network_osm"
+    createNetwork(network_name, by_name="Voorne_Putten_Rozenburg", network_type="drive")
 
     # Get hellevoetsluis by bbox (very slow... takes > 10 minutes)
     # hellevoetsluis_oudenhoorn_bbox = (51.81259324714577,4.071979655408526,51.864565569055316,4.2177201644417295)

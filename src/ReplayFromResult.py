@@ -631,7 +631,7 @@ class ReplayPyPlot(Replay):
                               end_time_in_seconds=end_time_in_seconds,parcels=self.parcels,passengers=self.passengers)
         self.plots_dir = Path(output_dir).joinpath("plots")
         if plot_extend is None:
-            bounds = self.active_nodes_gdf.bounds
+            bounds = self.node_gdf.bounds # Flexcode (changed to get full plot of the whole network used)
             self._map_extent = (bounds.minx.min(), bounds.maxx.max(), bounds.miny.min(), bounds.maxy.max())
         else:
             self._map_extent = plot_extend

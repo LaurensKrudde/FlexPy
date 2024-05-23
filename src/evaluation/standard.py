@@ -197,6 +197,28 @@ def shared_rides(op_df):
     return 100.0*N_shared/N
 
 
+# Flexcode
+def avg_regular_bus_TT(user_df):
+    return sum(user_df['regular_bus_TT']) / len(user_df)
+
+# Flexcode
+def avg_TT_gain_wrt_regular_bus(user_df):
+    return sum(user_df['regular_bus_TT'] - (user_df[G_RQ_DO] - user_df[G_RQ_PU])) / len(user_df)
+
+# Flexcode
+def regular_bus_driven_distance(line_name):
+    if line_name == 'line91_week':
+        INFRA_DIR = os.path.join(MAIN_DIR, 'data', 'infra', 'hellevoetsluis_infra', 'hellevoetsluis_network_osm')
+        total_km_a = pd.read_csv(os.path.join(INFRA_DIR, 'line91a_stops.csv'))['dist_cum_diff'].iloc[-1]
+        total_km_b = pd.read_csv(os.path.join(INFRA_DIR, 'line91b_stops.csv'))['dist_cum_diff'].iloc[-1]
+        return (total_km_a * 24 + total_km_b * 24) / 1000
+    return None
+
+def get_regular_bus_eval(scenario_name):
+    with open(os.path.join(MAIN_DIR, 'data', 'demand', 'hellevoetsluis', 'regular_bus_eval', f'{scenario_name}.json'), 'r') as f:
+        return json.load(f)
+
+
 def standard_evaluation(output_dir, evaluation_start_time = None, evaluation_end_time = None, print_comments=False, dir_names_in = {}):
     """This function runs a standard evaluation over a scenario output directory.
 
@@ -298,12 +320,14 @@ def standard_evaluation(output_dir, evaluation_start_time = None, evaluation_end
                        "modal split rq": op_modal_split_rq,
                        "reservation users": op_number_reservation_users,
                        "reservation pax" : op_number_reservation_pax,
+                       "served users": op_number_users,
                        "served reservation users [%]": op_frac_served_reservation_users,
                        "served reservation pax [%]": op_frac_served_reservation_pax,
                        "online users" : op_number_online_users,
                        "online pax" : op_number_online_pax,
                        "served online users [%]": op_frac_served_online_users,
                        "served online pax [%]": op_frac_served_online_pax,
+                       "created offers": op_created_offers,
                        r'% created offers': op_rel_created_offers,
                        "utility" : op_avg_utility}
 
@@ -551,23 +575,23 @@ def standard_evaluation(output_dir, evaluation_start_time = None, evaluation_end
 
         # output
         # ------"travel distance": pv_distance,  "parking cost": pv_parking_cost, "toll": pv_toll
-        result_dict["travel time"] = op_avg_travel_time
-        result_dict["travel distance"] = op_avg_travel_distance
-        result_dict["waiting time"] = op_avg_wait_time
-        result_dict["waiting time from ept"] = op_avg_wait_from_ept
-        result_dict["waiting time (median)"] = op_med_wait_time
-        result_dict["waiting time (90% quantile)"] = op_90perquant_wait_time
-        result_dict["detour time"] = op_avg_detour_time
-        result_dict["rel detour"] = op_avg_rel_detour
-        result_dict[r"% fleet utilization"] = op_fleet_utilization
+        result_dict["avg travel time [sec]"] = op_avg_travel_time  # travel time
+        result_dict["avg travel distance [?]"] = op_avg_travel_distance  # travel distance
+        result_dict["avg waiting time [sec]"] = op_avg_wait_time  # waiting time
+        result_dict["avg waiting time from ept [sec]"] = op_avg_wait_from_ept  # waiting time from ept
+        result_dict["avg waiting time (median) [sec]"] = op_med_wait_time  # waiting time (median)
+        result_dict["waiting time (90% quantile) [sec]"] = op_90perquant_wait_time  # waiting time (90% quantile)
+        result_dict["avg detour time [sec]"] = op_avg_detour_time  # detour time
+        result_dict["avg rel detour [frac]"] = op_avg_rel_detour / 100  # rel detour
+        result_dict["fleet utilization [frac]"] = op_fleet_utilization / 100
         result_dict["rides per veh rev hours"] = op_ride_per_veh_rev_hours
         result_dict["rides per veh rev hours rq"] = op_ride_per_veh_rev_hours_rq
-        result_dict["total vkm"] = op_total_km
+        result_dict["total driven distance [km]"] = op_total_km  # total vkm
         result_dict["occupancy"] = op_distance_avg_occupancy
         result_dict["occupancy rq"] = op_distance_avg_rq
-        result_dict[r"% empty vkm"] = op_empty_vkm
-        result_dict[r"% repositioning vkm"] = op_repositioning_vkm
-        result_dict["customer direct distance [km]"] = op_sum_direct_travel_distance
+        result_dict["empty vkm [frac]"] = op_empty_vkm / 100
+        result_dict["repositioning vkm [frac]"] = op_repositioning_vkm / 100
+        result_dict["total customer direct distance [km]"] = op_sum_direct_travel_distance  # customer direct distance [km]
         result_dict["saved distance [%]"] = op_saved_distance
         result_dict["trip distance per fleet distance"] = op_ride_distance_per_vehicle_distance
         result_dict["trip distance per fleet distance (no reloc)"] = op_ride_distance_per_vehicle_distance_no_rel
@@ -583,17 +607,82 @@ def standard_evaluation(output_dir, evaluation_start_time = None, evaluation_end
         result_dict["parking cost"] = op_parking_cost
         result_dict["toll"] = op_toll
         result_dict["customer in vehicle distance"] = avg_in_vehicle_distance(op_vehicle_df)
-        result_dict["shared rides [%]"] = shared_rides(op_vehicle_df)
-
+        result_dict["shared rides [frac]"] = shared_rides(op_vehicle_df) / 100
+        # Flexcode
+        regular_bus_stats = get_regular_bus_eval(scenario_parameters.get('rq_file')[:-4])
+        result_dict["bus total driven dist [km]"] = regular_bus_stats['total_vkm']
+        result_dict["avg bus travel time [sec]"] = regular_bus_stats['avg_travel_time']
+        result_dict["bus empty vkm [frac]"] = regular_bus_stats['empty_vkm_frac']
+        result_dict["bus occupancy"] = regular_bus_stats["occupancy_vkm_frac"]
+        result_dict["bus shared rides [frac]"] = regular_bus_stats["shared_rides_frac"]        
+        
         result_dict_list.append(result_dict)
         operator_names.append(op_name)
 
     # combine and save
     result_df = pd.DataFrame(result_dict_list, index=operator_names)
+
+    # Subset of evaluations (flexcode)
+    eval_subset = [
+        "avg waiting time [sec]",
+                   
+        "avg travel time [sec]",
+        "avg bus travel time [sec]",
+
+        "total driven distance [km]",
+        "bus total driven dist [km]",
+
+        "empty vkm [frac]",
+        "bus empty vkm [frac]",
+        
+        "shared rides [frac]",
+        "bus shared rides [frac]",
+
+        "occupancy",
+        "bus occupancy",
+
+        "number users",
+        "created offers",
+        "served users",
+        "fleet utilization [frac]",
+        "avg rel detour [frac]",
+        "repositioning vkm [frac]",
+        "avg driving velocity [km/h]"
+
+    ]
+    flex_result_df = result_df[eval_subset]
+    flex_result_df = flex_result_df.transpose()
+    flex_result_df.to_csv(os.path.join(output_dir, "flex_eval.csv"))
+
     result_df = result_df.transpose()
     result_df.to_csv(os.path.join(output_dir, "standard_eval.csv"))
 
     return result_df
+
+
+def create_eval_overview(study_name, scenario_config_filename):
+    """ Create a single eval file with the results from multiple scenarios from the same file """
+
+    RESULTS_DIR = os.path.join(MAIN_DIR, "studies", study_name, "results")
+    SCENARIOS_DIR = os.path.join(MAIN_DIR, "studies", study_name, "scenarios")
+
+    scenario_config_df = pd.read_csv(os.path.join(SCENARIOS_DIR, scenario_config_filename))
+
+    overview_df = pd.DataFrame()
+
+    for scenario_name in scenario_config_df['scenario_name']:
+        flex_eval_df = pd.read_csv(os.path.join(RESULTS_DIR, scenario_name, "flex_eval.csv"), index_col=0)
+        flex_eval_df = flex_eval_df.rename(columns={"MoD_0": scenario_name}).transpose()
+        flex_eval_df.index.name = "scenario name"
+        
+        if overview_df.empty:
+            overview_df = flex_eval_df
+        else:
+            overview_df = overview_df.append(flex_eval_df)
+
+    overview_df.to_csv(os.path.join(RESULTS_DIR, "eval_overview_" + scenario_config_filename))
+
+    return overview_df
 
 
 def evaluate_folder(path, evaluation_start_time = None, evaluation_end_time = None, print_comments = False):
@@ -610,8 +699,10 @@ def evaluate_folder(path, evaluation_start_time = None, evaluation_end_time = No
 
 
 if __name__ == "__main__":
-    import sys
-    sc = sys.argv[1]
+    # import sys
+    # sc = sys.argv[1]
     # sc = r'C:\Users\ge37ser\Documents\Coding\TUM_VT_FleetSimulation\tum-vt-fleet-simulation\results\FabianRPPsc01\sc01_200_1'
     #evaluate_folder(sc, print_comments=True)
-    standard_evaluation(sc, print_comments=True)
+    # standard_evaluation(sc, print_comments=True)
+    # create_eval_overview('hellevoetsluis', 'scenario_config_flex_bp.csv')
+    regular_bus_driven_distance('line91_week')
