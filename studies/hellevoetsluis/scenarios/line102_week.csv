@@ -1,5 +1,0 @@
-,scenario_name,op_fleet_composition,rq_file,op_max_wait_time
-0,line102_week_flex_2,flex_bus:2,line102_week.csv,1800
-1,line102_week_flex_3,flex_bus:3,line102_week.csv,1800
-2,line102_week_taxi_2,taxi:2,line102_week.csv,1800
-3,line102_week_taxi_3,taxi:3,line102_week.csv,1800

@@ -1,0 +1,2 @@
+,op_max_wait_time,op_max_detour_time_factor,op_reservation_module,rq_type,avg_fs,op_short_term_horizon,op_module,sim_env,user_max_decision_time,scenario_name,rq_file,demand_folder,demand_type,demand_scalar,op_fleet_composition,op_vr_control_func_dict,sample,config_str
+0,600,75,RollingHorizon,BasicRequest,1.0,1000000.0,RidePoolingBatchAssignmentFleetcontrol,BatchOfferSimulation,60,line91_week/day_ahead/1.0/sample_0/BO_600_UT_FB_1/,line91_week/day_ahead/1.0/sample_0.csv,line91_week,day_ahead,1.0,flex_bus:1,func_key:user_times,sample_0,BO_600_UT_FB_1

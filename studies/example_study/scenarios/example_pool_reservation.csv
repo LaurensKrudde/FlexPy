@@ -1,0 +1,2 @@
+op_module,scenario_name,rq_file,op_fleet_composition
+RidePoolingBatchAssignmentFleetcontrol,example_pool_reservation_only,example_100_reservation_only.csv,default_vehtype:5

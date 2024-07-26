@@ -1,0 +1,2 @@
+,op_max_wait_time,op_max_detour_time_factor,op_reservation_module,rq_type,avg_fs,op_module,sim_env,scenario_name,rq_file,demand_folder,demand_type,demand_scalar,op_fleet_composition,op_vr_control_func_dict,sample,config_str
+0,7200,10000,RollingHorizon,BasicRequest,1.0,PoolingIRSOnly,ImmediateDecisionsSimulation,line91_week/flag/dummy/sample_0/IR_7200_1W1TT_FB_1/,line91_week/flag/dummy/sample_0.csv,line91_week,wave,dummy,flex_bus:1,func_key:1_wait_and_1_travel_time_users,sample_0,IR_7200_1W1TT_FB_1

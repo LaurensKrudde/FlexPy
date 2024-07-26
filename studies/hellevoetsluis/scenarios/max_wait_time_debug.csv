@@ -1,0 +1,3 @@
+,op_max_wait_time,op_max_detour_time_factor,avg_fs,rq_type,op_module,sim_env,scenario_name,rq_file,demand_folder,demand_type,demand_scalar,op_fleet_composition,op_vr_control_func_dict,sample,config_str
+0,3600,75,1.0,BasicRequest,PoolingIRSOnly,ImmediateDecisionsSimulation,line91_week/5.0/sample_0/IR_3600_UT_FB_1/,line91_week/5.0/sample_0.csv,line91_week,on-demand,5.0,flex_bus:1,func_key:user_times,sample_0,IR_3600_UT_FB_1
+1,7200,75,1.0,BasicRequest,PoolingIRSOnly,ImmediateDecisionsSimulation,line91_week/5.0/sample_0/IR_7200_UT_FB_1/,line91_week/5.0/sample_0.csv,line91_week,on-demand,5.0,flex_bus:1,func_key:user_times,sample_0,IR_7200_UT_FB_1

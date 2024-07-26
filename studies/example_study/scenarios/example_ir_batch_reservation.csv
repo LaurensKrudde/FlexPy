@@ -1,0 +1,2 @@
+op_module,scenario_name,rq_file,op_fleet_composition,op_rh_reservation_max_routes,op_reoptimisation_timestep
+PoolingIRSAssignmentBatchOptimization,example_pool_irsbatch_reservation_only,example_100_reservation_only.csv,default_vehtype:5,50,600

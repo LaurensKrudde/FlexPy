@@ -1,0 +1,2 @@
+,op_max_wait_time,op_max_detour_time_factor,op_reservation_module,rq_type,avg_fs,op_module,sim_env,scenario_name,rq_file,demand_folder,demand_type,demand_scalar,op_fleet_composition,op_vr_control_func_dict,sample,config_str
+0,900,75,RollingHorizon,BasicRequest,1.0,RidePoolingBatchAssignmentFleetcontrol,BatchOfferSimulation,line91_week/planned/1.5/sample_0/BO_900_D+UTW0.45_FB_1/,line91_week/planned/1.5/sample_0.csv,line91_week,reservation,1.5,flex_bus:1,func_key:distance_and_user_times_with_walk;vot:0.45,sample_0,BO_900_D+UTW0.45_FB_1
