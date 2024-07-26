@@ -1,0 +1,17 @@
+{
+  "total_vkm": 2347.9231259999997,
+  "total_time": 289800.0,
+  "total_travel_time": 316140.0,
+  "avg_travel_time": 1170.888888888889,
+  "occupancy_vkm": 2654.0985250000003,
+  "occupancy_time": 316140.0,
+  "occupancy_vkm_frac": 1.130402650584907,
+  "occupancy_time_frac": 1.0908902691511386,
+  "empty_vkm": 1700.7677809999977,
+  "empty_time": 207480.0,
+  "empty_vkm_frac": 0.7243711526013557,
+  "empty_time_frac": 0.7159420289855073,
+  "total_passengers": 270.0,
+  "shared_rides": 270.0,
+  "shared_rides_frac": 1.0
+}

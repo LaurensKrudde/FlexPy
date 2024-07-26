@@ -13,7 +13,23 @@ if __name__ == "__main__":
     hourly_costs = monthly_costs / 173
 
     print(f"Average hourly bus driver costs: {hourly_costs} euro")
+    print(f"Average 8-hour workday costs: {hourly_costs * 8} euro")
 
-    
+    # Average diesel use 9 person bus
+    # https://voorraad.autodatawheelerdelta.nl/renault/trafic/passenger-16-dci-8-pers-l2h1-inclbpm-btw-vrij-navi-ac-cruise-pdc-mf-stuur/occ18091798-35de5
+    diesel_liters_per_100km = 7.9
 
+    # Average benzine use car
+    # https://www.unitedconsumers.com/blog/auto/zuinig-rijden.jsp#:~:text=Een%20gemiddelde%20benzineauto%20rijdt%20ongeveer,dieselauto%20ongeveer%201%20op%2021.
+    benzine_liters_per_100km = 6.67
 
+    # CO2-emission 174 gram / km (same ref as above)
+    co2_emission_grams_per_km = 174
+
+    # Gas price
+    # https://www.nu.nl/brandstof?referrer=https%3A%2F%2Fwww.google.com%2F
+    diesel_euro_per_liter = 1.86
+    benzine_euro_per_liter = 2.19
+
+    print(f"Average gas costs per km (taxi): {benzine_euro_per_liter * benzine_liters_per_100km / 100}")
+    print(f"Average gas costs per km (8 person bus): {diesel_euro_per_liter * diesel_liters_per_100km / 100}")

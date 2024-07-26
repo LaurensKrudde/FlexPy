@@ -1,0 +1,14 @@
+{
+    "total_n_trips": 48.0,
+    "avg waiting time [sec]": 997.8260869565217,
+    "number users": 92.0,
+    "served users": 92.0,
+    "total driven distance [km]": 476.32574400000004,
+    "avg travel time [sec]": 343.69565217391306,
+    "occupancy": 0.4985204746775141,
+    "empty vkm [frac]": 0.6563783228982898,
+    "shared rides [frac]": 0.5978260869565217,
+    "total costs [euro]": 652.419884368,
+    "driver costs [euro]": 582.4,
+    "gas costs [euro]": 70.01988436799999
+}
