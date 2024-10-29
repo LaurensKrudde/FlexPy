@@ -94,6 +94,7 @@ def get_src_fleet_control_modules():
 def get_src_repositioning_strategies():
     # FleetPy repositioning options
     repo_dict = {}  # str -> (module path, class name)
+    repo_dict["SimpleRepositioning"] = ("src.fleetctrl.repositioning.SimpleRepositioning", "SimpleRepositioning")
     repo_dict["PavoneFC"] = ("src.fleetctrl.repositioning.PavoneHailingFC", "PavoneHailingRepositioningFC")
     repo_dict["PavoneFCV2"] = ("src.fleetctrl.repositioning.PavoneHailingFC", "PavoneHailingV2RepositioningFC")
     repo_dict["DensityFrontiers"] = ("src.fleetctrl.repositioning.FrontiersDensityBasedRepositioning", "DensityRepositioning")
