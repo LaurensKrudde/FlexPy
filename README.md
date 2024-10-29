@@ -1,6 +1,15 @@
 # FlexPy
-Extending the FleetPy framework to simulate on demand public transport in the Netherlands (Flexvervoer).
+Extending the FleetPy framework to simulate on demand public transport in the Netherlands (Flexvervoer). The main additions are:
 
+1. Bus stops of existing bus lines are used as boarding points. The code to extract the location of bus stops from OpenStreetMap (OSM) and assign them to a node in the FleetPy network can be found in `src\preprocessing\regular_bus\osm_bus_stop_extractor.py`.
+2. Demand data is generated from aggregated boarding and alighting data of existing bus lines. The code can be found in `src\preprocessing\regular_bus\` and the main logic can be found in `OneWayRegularBusLine.py`. This also includes evaluation of a bus line in transporting the generated demand, which can be compared to the evaluation of a DRT system.
+3. Simulation of on-demand requests without destination; the operator only knows the origin. The destination is revealed once the user is picked up. 
+\
+The assumption here is that a user can request a vehicle by a simple physical interaction at a bus stop, for example pressing a button or checking in with a smart card, to let the operator know that they're waiting at the bus stop. This removes the requirement of using an app or making a phone call, potentially lowering the barrier to use DRT.
+\
+They can be called 'stop-based' requests, but it can the code they are denoted by flag/wave/button requests (I couldn't choose a name)
+\
+The demand data requires an additional column `wave` which is set to `True` for these requests. Various additions are made in `src\fleetctrl` to handle these requests, including the the separate insertion of origins and destinations in `src\fleetctrl\pooling\insertion.py`.
 
 
 # FleetPy
