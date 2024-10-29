@@ -7,6 +7,9 @@ import geopandas as gpd
 import osmnx as ox
 import networkx as nx
 
+import matplotlib
+matplotlib.rc('font', size=16)
+
 script_dir = os.path.abspath(os.path.dirname(__file__))
 FLEETPY_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(script_dir))))
 NETWORK_DIR = os.path.join(FLEETPY_DIR, "data", "networks")
@@ -305,19 +308,34 @@ class NetworkOSMCreator():
         x = [node.coordinates[0] for node in self.nodes]
         y = [node.coordinates[1] for node in self.nodes]
 
-        plt.plot(x, y, "rx")
+        # Nodes
+        plt.scatter(x, y, marker="o", s=5, c='r')
 
+        # Edges
         for arc in self.edge_id_to_edge.values():
-            plt.plot([x[0] for x in arc.polyline], [y[1] for y in arc.polyline], "b-")
+            plt.plot([x[0] for x in arc.polyline], [y[1] for y in arc.polyline], c='b', linewidth=0.7)
 
-        for supernode in self.super_nodes.values():
-            x = [supernode.polygon[i%len(supernode.polygon)][0] for i in range(len(supernode.polygon) + 1)]
-            y = [supernode.polygon[i%len(supernode.polygon)][1] for i in range(len(supernode.polygon) + 1)]
-            plt.plot(x, y, "g-")
+        # for supernode in self.super_nodes.values():
+        #     x = [supernode.polygon[i%len(supernode.polygon)][0] for i in range(len(supernode.polygon) + 1)]
+        #     y = [supernode.polygon[i%len(supernode.polygon)][1] for i in range(len(supernode.polygon) + 1)]
+        #     plt.plot(x, y, "g-")
 
-        # Flexcode plot boarding points
-        boarding_points_df = pd.read_csv(os.path.join(INFRA_DIR, 'line105a_stops.csv'))
-        plt.plot(boarding_points_df['lon'], boarding_points_df['lat'], "go")
+        # Boarding points
+        boarding_points_df = pd.read_csv(os.path.join(INFRA_DIR, 'boarding_points_stops.csv'))
+        plt.plot(boarding_points_df['lon'], boarding_points_df['lat'], marker='^', color='lime', linestyle='None')
+
+        handles, labels = plt.gca().get_legend_handles_labels()
+
+        handles.extend([
+            plt.Line2D([0], [0], color='lime', marker='^', linestyle='None', markersize=10, label='Bus stops'),
+            plt.Line2D([0], [0], color='red', marker='o', linestyle='None', markersize=10, label='Nodes'),
+            plt.Line2D([0], [0], color='blue', linestyle='-', linewidth=2, label='Edges')
+        ])
+        plt.legend(handles=handles)
+
+        plt.xlabel("Longitude")
+        plt.ylabel("Latitude")
+        
 
         plt.show()
 
@@ -495,7 +513,7 @@ def createNetwork(network_name, bbox=None, polygon=None, by_name=None, network_t
 if __name__ == "__main__":
     
     # Get Hellevoetsluis by name
-    network_name = "hellevoetsluis_network_osm"
+    network_name = "hellevoetsluis_plotten"
     createNetwork(network_name, by_name="Voorne_Putten_Rozenburg", network_type="drive")
 
     # Get hellevoetsluis by bbox (very slow... takes > 10 minutes)
