@@ -78,7 +78,7 @@ def create_bus_stop_nodes_csv(osm_larger_network_name, osm_busline_name, gis_nam
 
     networkx_graph = ox.io.load_graphml(os.path.join(NETWORK_DIR, network_name, "base", "network.graphml"))
 
-    # TODO split the edge in two?
+    # TODO optional: split the edge in two?
     bus_stops_network_edge_nodes_osmids = [ox.nearest_edges(networkx_graph, stop['lon'], stop['lat']) for stop in bus_stops_nodes_osm]
     bus_stops_network_edge_node_u = [u for (u, _, _) in bus_stops_network_edge_nodes_osmids]
     bus_stops_network_edge_node_v = [v for (_, v, _) in bus_stops_network_edge_nodes_osmids]
@@ -144,5 +144,6 @@ if __name__ == "__main__":
     # create_bus_stop_nodes_csv(osm_larger_network_name, osm_busline106a_name, gis_name, network_name, "line106a_stops", [2, 3, 4, 5, 7, 11, 13, 15])
     # create_bus_stop_nodes_csv(osm_larger_network_name, osm_busline106b_name, gis_name, network_name, "line106b_stops", [3, 5, 7, 11, 13, 14, 15, 16])
 
-    stops_list = ["line91a_stops", "line91b_stops", "line102a_stops", "line102b_stops", "line105a_stops", "line105b_stops", "line106a_stops", "line106b_stops"]
-    create_boarding_points([f"{stop_file_name}.csv" for stop_file_name in stops_list])
+    # Create boarding_points.csv with all bus stops
+    # stops_list = ["line91a_stops", "line91b_stops", "line102a_stops", "line102b_stops", "line105a_stops", "line105b_stops", "line106a_stops", "line106b_stops"]
+    # create_boarding_points([f"{stop_file_name}.csv" for stop_file_name in stops_list])
