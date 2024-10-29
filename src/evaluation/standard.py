@@ -214,6 +214,7 @@ def regular_bus_driven_distance(line_name):
         return (total_km_a * 24 + total_km_b * 24) / 1000
     return None
 
+# Flexcode
 def get_regular_bus_eval(scenario_name):
     with open(os.path.join(MAIN_DIR, 'data', 'demand', 'hellevoetsluis', 'regular_bus_eval', f'{scenario_name}.json'), 'r') as f:
         return json.load(f)
@@ -314,7 +315,11 @@ def standard_evaluation(output_dir, evaluation_start_time = None, evaluation_end
             op_frac_served_online_pax = 100.0
 
         result_dict = {"operator_id": op_id, 
+                       "total number users": number_users,
                        "number users": op_number_users,
+                       "unserved users": number_users - op_number_users,
+                       "served users [%]": op_number_users/number_users*100.0,
+                       "unserved users [%]": (number_users - op_number_users)/number_users*100.0,
                        "number travelers": op_number_pax,
                        "modal split": op_modal_split,
                        "modal split rq": op_modal_split_rq,
@@ -395,14 +400,25 @@ def standard_evaluation(output_dir, evaluation_start_time = None, evaluation_end
             if G_RQ_FARE in op_users.columns:
                 op_revenue = op_users[G_RQ_FARE].sum()
             # avg waiting time
+            # G_RQ_EPT = "earliest_pickup_time"
+            # G_RQ_LPT = "latest_pickup_time"
             if G_RQ_PU in op_users.columns and G_RQ_TIME in op_users.columns:
                 op_users["wait time"] = op_users[G_RQ_PU] - op_users[G_RQ_TIME]
                 op_avg_wait_time = op_users["wait time"].mean()
                 op_med_wait_time = op_users["wait time"].median()
-                op_90perquant_wait_time = op_users["wait time"].quantile(q=0.9)
+                op_users["reservation time"] = op_users[G_RQ_PU] - op_users[G_RQ_TIME] # 'earliest_pickup_time' - 'rq_time'
+                op_users["wait time from ept"] = op_users[G_RQ_PU] - op_users[G_RQ_EPT] # 'pickup_time' - 'earliest_pickup_time'
+                op_avg_wait_time_ept = op_users["wait time from ept"].mean()
+                op_10perquant_wait_time = op_users["wait time from ept"].quantile(q=0.1)
+                op_25perquant_wait_time = op_users["wait time from ept"].quantile(q=0.25)
+                op_75perquant_wait_time = op_users["wait time from ept"].quantile(q=0.75)
+                op_90perquant_wait_time = op_users["wait time from ept"].quantile(q=0.9)
             # avg waiting time from earliest pickup time
             if G_RQ_PU in op_users.columns and G_RQ_EPT in op_users.columns:
                 op_avg_wait_from_ept = (op_users[G_RQ_PU].sum() - op_users[G_RQ_EPT].sum()) / op_number_users
+                op_avg_wait_from_offer = (op_users['pickup_time'] - op_users['offered pick-up time']).mean()
+                op_avg_wait_to_offer = (op_users['offered pick-up time'] - op_users['earliest_pickup_time']).mean()
+
             # avg abs detour time
             if not np.isnan(op_user_sum_travel_time) and G_RQ_DRT in op_users.columns:
                 op_avg_detour_time = (op_user_sum_travel_time - op_users[G_RQ_DRT].sum())/op_number_users - \
@@ -575,11 +591,17 @@ def standard_evaluation(output_dir, evaluation_start_time = None, evaluation_end
 
         # output
         # ------"travel distance": pv_distance,  "parking cost": pv_parking_cost, "toll": pv_toll
+        result_dict["avg user time [sec]"] = op_avg_wait_from_ept + op_avg_travel_time
         result_dict["avg travel time [sec]"] = op_avg_travel_time  # travel time
         result_dict["avg travel distance [?]"] = op_avg_travel_distance  # travel distance
         result_dict["avg waiting time [sec]"] = op_avg_wait_time  # waiting time
         result_dict["avg waiting time from ept [sec]"] = op_avg_wait_from_ept  # waiting time from ept
-        result_dict["avg waiting time (median) [sec]"] = op_med_wait_time  # waiting time (median)
+        result_dict["avg waiting time from ept to offer [sec]"] = op_avg_wait_to_offer  # waiting time to offer
+        result_dict["avg waiting time from offer to pick-up [sec]"] = op_avg_wait_from_offer  # waiting time from offer
+        result_dict["waiting time median [sec]"] = op_med_wait_time  # waiting time (median)
+        result_dict["waiting time (10% quantile) [sec]"] = op_10perquant_wait_time  # waiting time (10% quantile)
+        result_dict["waiting time (25% quantile) [sec]"] = op_25perquant_wait_time  # waiting time (25% quantile)
+        result_dict["waiting time (75% quantile) [sec]"] = op_75perquant_wait_time  # waiting time (75% quantile)
         result_dict["waiting time (90% quantile) [sec]"] = op_90perquant_wait_time  # waiting time (90% quantile)
         result_dict["avg detour time [sec]"] = op_avg_detour_time  # detour time
         result_dict["avg rel detour [frac]"] = op_avg_rel_detour / 100  # rel detour
@@ -608,13 +630,29 @@ def standard_evaluation(output_dir, evaluation_start_time = None, evaluation_end
         result_dict["toll"] = op_toll
         result_dict["customer in vehicle distance"] = avg_in_vehicle_distance(op_vehicle_df)
         result_dict["shared rides [frac]"] = shared_rides(op_vehicle_df) / 100
-        # Flexcode
-        regular_bus_stats = get_regular_bus_eval(scenario_parameters.get('rq_file')[:-4])
-        result_dict["bus total driven dist [km]"] = regular_bus_stats['total_vkm']
-        result_dict["avg bus travel time [sec]"] = regular_bus_stats['avg_travel_time']
-        result_dict["bus empty vkm [frac]"] = regular_bus_stats['empty_vkm_frac']
-        result_dict["bus occupancy"] = regular_bus_stats["occupancy_vkm_frac"]
-        result_dict["bus shared rides [frac]"] = regular_bus_stats["shared_rides_frac"]        
+
+        # Flexpy
+        veh_type = veh_type_stats['vehicle_type'].iloc[0]   # assuming all vehicles are the same in the simulation
+        # TODO check this: is revenue_hours correct?
+        driver_costs = -1
+        gas_costs = -1
+        if veh_type_db[veh_type].get('hourly_costs_euro') is not None:
+            if scenario_parameters.get('avg_fs') is not None:
+                driver_costs = (simulation_time / 3600) * veh_type_db[veh_type]['hourly_costs_euro'] * scenario_parameters['avg_fs']
+            else:
+                driver_costs = (simulation_time / 3600) * veh_type_db[veh_type]['hourly_costs_euro'] * n_vehicles
+            gas_costs = op_total_km * veh_type_db[veh_type]['gas_cost_euro_per_km']
+        
+        # FlexPy
+        result_dict["driver costs [euro]"] = driver_costs
+        result_dict["gas costs [euro]"] = gas_costs
+        result_dict["total costs [euro]"] = driver_costs + gas_costs
+        result_dict["revenue hours"] = op_vehicle_revenue_hours
+        result_dict["total unit cost [euro/pax]"] = (driver_costs + gas_costs) / op_number_users
+        result_dict["CO2 emissions [g / pax km]"] = veh_type_db[veh_type]['co2_g_per_km'] / op_distance_avg_occupancy
+        result_dict["CO2 emissions [kg]"] = veh_type_db[veh_type]['co2_g_per_km'] * op_total_km / 1000
+        result_dict["CO2 emissions [g / pax km] check"] = result_dict["CO2 emissions [kg]"] / (op_number_users * op_total_km)
+
         
         result_dict_list.append(result_dict)
         operator_names.append(op_name)
@@ -624,28 +662,36 @@ def standard_evaluation(output_dir, evaluation_start_time = None, evaluation_end
 
     # Subset of evaluations (flexcode)
     eval_subset = [
-        "avg waiting time [sec]",
-                   
+        "avg user time [sec]",
+        "avg waiting time from ept [sec]",
         "avg travel time [sec]",
-        "avg bus travel time [sec]",
-
         "total driven distance [km]",
-        "bus total driven dist [km]",
-
+        "avg waiting time from ept to offer [sec]",
+        "avg waiting time from offer to pick-up [sec]",
+        "avg waiting time [sec]",
+        "waiting time median [sec]",
+        # "waiting time (10% quantile) [sec]",
+        # "waiting time (25% quantile) [sec]",
+        # "waiting time (75% quantile) [sec]",
+        # "waiting time (90% quantile) [sec]",
+        "total unit cost [euro/pax]",
+        "total costs [euro]",
+        "driver costs [euro]",
+        "gas costs [euro]",
         "empty vkm [frac]",
-        "bus empty vkm [frac]",
-        
         "shared rides [frac]",
-        "bus shared rides [frac]",
-
         "occupancy",
-        "bus occupancy",
-
-        "number users",
-        "created offers",
+        "CO2 emissions [g / pax km]",
+        "CO2 emissions [kg]",
+        "total number users",
         "served users",
+        "unserved users",
+        "served users [%]",
+        "unserved users [%]",
+        "created offers",
         "fleet utilization [frac]",
         "avg rel detour [frac]",
+        "avg detour time [sec]",
         "repositioning vkm [frac]",
         "avg driving velocity [km/h]"
 
@@ -661,7 +707,7 @@ def standard_evaluation(output_dir, evaluation_start_time = None, evaluation_end
 
 
 def create_eval_overview(study_name, scenario_config_filename):
-    """ Create a single eval file with the results from multiple scenarios from the same file """
+    """ Create a single eval file with the results from all scenarios of a single scenario config file """
 
     RESULTS_DIR = os.path.join(MAIN_DIR, "studies", study_name, "results")
     SCENARIOS_DIR = os.path.join(MAIN_DIR, "studies", study_name, "scenarios")
@@ -670,17 +716,40 @@ def create_eval_overview(study_name, scenario_config_filename):
 
     overview_df = pd.DataFrame()
 
-    for scenario_name in scenario_config_df['scenario_name']:
+    for i, scenario_name in enumerate(scenario_config_df['scenario_name']):
+
+        # Add simulated scenarios stats
         flex_eval_df = pd.read_csv(os.path.join(RESULTS_DIR, scenario_name, "flex_eval.csv"), index_col=0)
         flex_eval_df = flex_eval_df.rename(columns={"MoD_0": scenario_name}).transpose()
         flex_eval_df.index.name = "scenario name"
+
+        # Add vehicle type
+        vehicle_df = pd.read_csv(os.path.join(RESULTS_DIR, scenario_name, "2_vehicle_types.csv"))
+        vehicle_type = vehicle_df['vehicle_type'].iloc[0]
+        n_vehicles = len(vehicle_df)
+        flex_eval_df['vehicle'] = f"{vehicle_type}:{n_vehicles}"
+
+        # Add demand scale
+        flex_eval_df['demand_scalar'] = scenario_config_df['demand_scalar'].iloc[i]
+        
         
         if overview_df.empty:
             overview_df = flex_eval_df
         else:
             overview_df = overview_df.append(flex_eval_df)
 
-    overview_df.to_csv(os.path.join(RESULTS_DIR, "eval_overview_" + scenario_config_filename))
+        # Add bus stats 
+        with open(os.path.join(RESULTS_DIR, scenario_name, 'regular_bus_eval.json'), 'r') as f:
+            bus_stats_dict = json.load(f)
+
+        bus_stats_df = pd.DataFrame(bus_stats_dict, index=[f'{scenario_name}_regular_bus'])
+        bus_stats_df['vehicle'] = "regular_bus"
+        bus_stats_df['demand_scalar'] = scenario_config_df['demand_scalar'].iloc[i]
+
+        overview_df = pd.concat([overview_df, bus_stats_df])
+
+    overview_df.index.name = "scenario name"
+    overview_df.to_csv(os.path.join(RESULTS_DIR, scenario_config_filename[:-4], "overview_" + scenario_config_filename))
 
     return overview_df
 
@@ -705,4 +774,15 @@ if __name__ == "__main__":
     #evaluate_folder(sc, print_comments=True)
     # standard_evaluation(sc, print_comments=True)
     # create_eval_overview('hellevoetsluis', 'scenario_config_flex_bp.csv')
-    regular_bus_driven_distance('line91_week')
+
+    scenario_filename = "line91_base_scenarios_3.csv"
+    SCENARIO_DIR = os.path.join(MAIN_DIR, 'studies', 'hellevoetsluis', 'scenarios')
+    scenario_df = pd.read_csv(os.path.join(SCENARIO_DIR, scenario_filename))
+
+    for _, row in scenario_df.iterrows():
+
+        scenario_name = row['scenario_name']
+        scenario_path = os.path.join(MAIN_DIR, 'studies', 'hellevoetsluis', 'results', scenario_name)
+
+        standard_evaluation(scenario_path, 28800, 93600, print_comments=False)
+        print(f"Evaluated {scenario_name}")
