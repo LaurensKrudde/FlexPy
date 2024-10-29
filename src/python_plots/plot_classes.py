@@ -48,7 +48,7 @@ class PyPlot(Process):
 
         # Boarding points (hardcoded for hellevoetsluis TODO: make it dynamic)
         data_folder = os.path.dirname(os.path.dirname(nw_dir))
-        boarding_points_df = pd.read_csv(os.path.join(data_folder, "infra", "hellevoetsluis_infra", "hellevoetsluis_network_osm", "boarding_points.csv"))
+        boarding_points_df = pd.read_csv(os.path.join(data_folder, "infra", "hellevoetsluis_infra", "hellevoetsluis_network_osm", "boarding_points_stops.csv"))
         self.boarding_points_x, self.boarding_points_y = self.convert_lat_lon(boarding_points_df["lat"].values, boarding_points_df["lon"].values)
 
         self.fig, self.grid_spec, self.axes = None, None, None
@@ -210,7 +210,7 @@ class PyPlot(Process):
                 x, y = self.convert_lat_lon(lats, lons)
             axes[3].scatter(x, y, s=VEHICLE_POINT_SIZE, label=possible_status[i],color = color_list[i])
 
-        # Plot boarding points TODO only plot if boarding points file used
+        # Flexpy Plot boarding points TODO only plot if boarding points file used
         axes[3].scatter(self.boarding_points_x, self.boarding_points_y, s=10, color="red", marker='^')
 
         axes[3].legend(loc="lower left")
