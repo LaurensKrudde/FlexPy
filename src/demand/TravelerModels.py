@@ -92,6 +92,11 @@ class RequestBase(metaclass=ABCMeta):
         # 
         self.modal_state = G_RQ_STATE_MONOMODAL # mono-modal trip by default 
 
+        # Flag request
+        self.wave = rq_row.get("flag", False)
+        # if self.earliest_start_time > self.rq_time and self.flag:
+        #     raise ValueError("Wave request with ept > rq_time")
+
     def get_rid(self):
         return self.rid
 
@@ -130,6 +135,7 @@ class RequestBase(metaclass=ABCMeta):
         record_dict[G_RQ_TYPE] = self.type
         record_dict[G_RQ_PAX] = self.nr_pax
         record_dict[G_RQ_TIME] = self.rq_time
+        record_dict["reservation_time"] = self.earliest_start_time - self.rq_time
         record_dict[G_RQ_EPT] = self.earliest_start_time
         # # node output
         # record_dict[G_RQ_ORIGIN] = self.o_node
@@ -163,12 +169,20 @@ class RequestBase(metaclass=ABCMeta):
             all_offer_info.append(f"{op_id}:" + operator_offer.to_output_str())
         record_dict[G_RQ_OFFERS] = "|".join(all_offer_info)
         # decision-dependent
+        record_dict["offered pick-up time"] = self.rq_time + self.offer[self.service_opid].get(G_OFFER_WAIT, "") if self.service_opid is not None else ""
+        record_dict[G_RQ_PU] = self.pu_time
+        record_dict["offer wait time from ept"] = self.rq_time + self.offer[self.service_opid].get(G_OFFER_WAIT, "") - self.earliest_start_time if self.service_opid is not None else ""
+        record_dict["actual pu wait time from ept"] = self.pu_time - self.earliest_start_time if self.pu_time else ""
+        record_dict["extra wait time"] = record_dict["actual pu wait time from ept"] - record_dict["offer wait time from ept"] if self.pu_time else ""
         record_dict[G_RQ_LEAVE_TIME] = self.leave_system_time  # TODO # when only adding stuff conditionally there will
         record_dict[G_RQ_CHOSEN_OP_ID] = self.chosen_operator_id  # TODO # be errors when evaluating
         record_dict[G_RQ_OP_ID] = self.service_opid
         record_dict[G_RQ_VID] = self.service_vid
-        record_dict[G_RQ_PU] = self.pu_time
+        # record_dict[G_RQ_PU] = self.pu_time
+        # record_dict["offer drop-off time"] = record_dict["offered pick-up time"] + self.offer[self.service_opid].get(G_OFFER_DRIVE, "") if self.service_opid is not None else ""
         record_dict[G_RQ_DO] = self.do_time
+        record_dict["travel time"] = self.do_time - self.pu_time if self.do_time else ""
+        record_dict["total time from ept"] = self.do_time - self.earliest_start_time if self.do_time else ""
         record_dict[G_RQ_FARE] = self.fare
         record_dict[G_RQ_MODAL_STATE] = self.modal_state
         return self._add_record(record_dict)
