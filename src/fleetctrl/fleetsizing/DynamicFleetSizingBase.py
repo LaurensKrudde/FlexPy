@@ -83,6 +83,15 @@ class DynamicFleetSizingBase(ABC):
             return None, None
         LOG.info(f"Deactivating vehicle {veh_obj} at depot {next_free_depot} (plan time: {sim_time})")
         next_free_depot.schedule_inactive(veh_obj)
+
+        # Add alighting stop for wave requests
+        cur_veh_plan = self.fleetctrl.veh_plans[veh_obj.vid]
+        for rid in cur_veh_plan.get_involved_request_ids():
+            self.fleetctrl.plan_wave_request_dropoff(rid, veh_obj.vid, sim_time)
+        LOG.flex(f"After: {self.fleetctrl.veh_plans[0].simple_print()}")
+        LOG.flex(f"After: {self.fleetctrl.veh_plans[1].simple_print()}")
+
+        # Add inactive plan stop
         ps = RoutingTargetPlanStop(next_free_depot.pos, duration=LARGE_INT, locked=True, planstop_state=G_PLANSTOP_STATES.INACTIVE)
         ass_plan = self.fleetctrl.veh_plans[veh_obj.vid]
         ass_plan.add_plan_stop(ps, veh_obj, sim_time, self.routing_engine)

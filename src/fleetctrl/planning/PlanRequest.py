@@ -57,6 +57,10 @@ class PlanRequest:
             self.d_pos = rq.d_pos
         else:
             self.d_pos = dropoff_pos
+        
+        # Wave request
+        self.wave_flag = rq.wave
+        
         #
         self.walking_time_start = walking_time_start
         self.walking_time_end = walking_time_end
@@ -122,6 +126,11 @@ class PlanRequest:
         """ returns if request is treated as reservation request 
         :return: reservation flag"""
         return self.reservation_flag
+    
+    def get_wave_flag(self) -> bool:
+        """ returns if request is treated as wave request 
+        :return: wave flag"""
+        return self.wave_flag
 
     def get_rid_struct(self):
         """ this function returns the id of the plan request

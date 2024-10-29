@@ -11,6 +11,8 @@ from src.misc.globals import *
 
 LARGE_INT = 1000000
 
+W_TT = 1
+
 
 # -------------------------------------------------------------------------------------------------------------------- #
 # main function
@@ -123,7 +125,85 @@ def return_pooling_objective_function(vr_control_func_dict:dict)->Callable[[int,
                 drop_off_time = boarding_info_list[1]
                 sum_user_times += (drop_off_time - rq_time)
             # utility is negative value of end_time - simulation_time
-            return sum_user_times - simulation_time - assignment_reward
+            # return sum_user_times - simulation_time - assignment_reward
+            return sum_user_times - assignment_reward
+        
+    elif func_key == "distance_and_weighted_user_times":
+        weight_wait_time = vr_control_func_dict["w_wt"]
+        weight_travel_time = vr_control_func_dict["w_tt"]
+        traveler_vot = 0.45
+
+        def control_f(simulation_time:float, veh_obj:SimulationVehicle, veh_plan:VehiclePlan, rq_dict:Dict[Any,PlanRequest], routing_engine:NetworkBase)->float:
+            """This function combines the total driving costs and the value of customer time.
+
+            :param simulation_time: current simulation time
+            :param veh_obj: simulation vehicle object
+            :param veh_plan: vehicle plan in question
+            :param rq_dict: rq -> Plan request dictionary
+            :param routing_engine: for routing queries
+            :return: objective function value
+            """
+            assignment_reward = len(veh_plan.pax_info) * LARGE_INT
+            
+            # distance term
+            sum_dist = 0
+            last_pos = veh_obj.pos
+            for ps in veh_plan.list_plan_stops:
+                pos = ps.get_pos()
+                if pos != last_pos:
+                    sum_dist += routing_engine.return_travel_costs_1to1(last_pos, pos)[2]
+                    last_pos = pos
+
+            # user time term
+            sum_user_times = 0
+            for rid, boarding_info_list in veh_plan.pax_info.items():
+
+                # Waiting time (we assume on-demand scenario, so rq_time == earliest_pickup_time)
+                rq_time = rq_dict[rid].rq_time
+                pickup_time = boarding_info_list[0]
+                sum_user_times += weight_wait_time * (pickup_time - rq_time)
+
+                # Travel time (if available (not the case for unboarded wave requests))
+                if len(boarding_info_list) == 2:
+                    drop_off_time = boarding_info_list[1]
+                    sum_user_times += weight_travel_time * (drop_off_time - pickup_time)
+            
+            # vehicle costs are taken from simulation vehicle (cent per meter)
+            # value of travel time is scenario input (cent per second)
+            return sum_dist * veh_obj.distance_cost + sum_user_times * traveler_vot - assignment_reward
+        
+    elif func_key == f"weighted_user_times":
+        weight_wait_time = vr_control_func_dict["w_wt"]
+        weight_travel_time = vr_control_func_dict["w_tt"]
+
+        def control_f(simulation_time:float, veh_obj:SimulationVehicle, veh_plan:VehiclePlan, rq_dict:Dict[Any,PlanRequest], routing_engine:NetworkBase)->float:
+            """This function evaluates the total spent time of a vehicle according to a vehicle plan.
+
+            :param simulation_time: current simulation time
+            :param veh_obj: simulation vehicle object
+            :param veh_plan: vehicle plan in question
+            :param rq_dict: rq -> Plan request dictionary
+            :param routing_engine: for routing queries
+            :return: objective function value
+            """
+
+            # Large reward for picking up passengers (picking up the most possible passengers is always more rewarding than optimizing for less passengers)
+            assignment_reward = len(veh_plan.pax_info) * LARGE_INT
+            
+            sum_user_times = 0
+            for rid, boarding_info_list in veh_plan.pax_info.items():
+
+                # Waiting time (we assume on-demand scenario, so rq_time == earliest_pickup_time)
+                rq_time = rq_dict[rid].rq_time
+                pickup_time = boarding_info_list[0]
+                sum_user_times += weight_wait_time * (pickup_time - rq_time)
+
+                # Travel time (if available (not the case for unboarded wave requests))
+                if len(boarding_info_list) == 2:
+                    drop_off_time = boarding_info_list[1]
+                    sum_user_times += weight_travel_time * (drop_off_time - pickup_time)
+
+            return sum_user_times - assignment_reward
         
     elif func_key == "total_travel_times":
         def control_f(simulation_time:float, veh_obj:SimulationVehicle, veh_plan:VehiclePlan, rq_dict:Dict[Any,PlanRequest], routing_engine:NetworkBase)->float:

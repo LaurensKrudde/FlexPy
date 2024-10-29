@@ -5,7 +5,7 @@ from src.simulation.Offers import TravellerOffer
 from src.fleetctrl.FleetControlBase import FleetControlBase
 from src.fleetctrl.planning.PlanRequest import PlanRequest
 from src.fleetctrl.pooling.objectives import return_pooling_objective_function
-from src.fleetctrl.pooling.immediate.insertion import insertion_with_heuristics
+from src.fleetctrl.pooling.immediate.insertion import insertion_with_heuristics, immediate_dropoff_insertion_with_heuristics
 from src.misc.globals import *
 
 LOG = logging.getLogger(__name__)
@@ -62,6 +62,8 @@ class PoolingInsertionHeuristicOnly(FleetControlBase):
         self.tmp_assignment = {}  # rid -> VehiclePlan
         self._init_dynamic_fleetcontrol_output_key(G_FCTRL_CT_RQU)
 
+        self.unhandled_boarded_wave_requests = []
+
     def receive_status_update(self, vid, simulation_time, list_finished_VRL, force_update=True):
         """This method can be used to update plans and trigger processes whenever a simulation vehicle finished some
          VehicleRouteLegs.
@@ -98,10 +100,13 @@ class PoolingInsertionHeuristicOnly(FleetControlBase):
         t0 = time.perf_counter()
         LOG.debug(f"Incoming request {rq.__dict__} at time {sim_time}")
         self.sim_time = sim_time
-        prq = PlanRequest(rq, self.routing_engine, min_wait_time=self.min_wait_time,
+        prq = PlanRequest(rq, self.routing_engine, 
+                          min_wait_time=self.min_wait_time,
                           max_wait_time=self.max_wait_time,
-                          max_detour_time_factor=self.max_dtf, max_constant_detour_time=self.max_cdt,
-                          add_constant_detour_time=self.add_cdt, min_detour_time_window=self.min_dtw,
+                          max_detour_time_factor=self.max_dtf, 
+                          max_constant_detour_time=self.max_cdt,
+                          add_constant_detour_time=self.add_cdt, 
+                          min_detour_time_window=self.min_dtw,
                           boarding_time=self.const_bt)
 
         rid_struct = rq.get_rid_struct()
@@ -127,6 +132,9 @@ class PoolingInsertionHeuristicOnly(FleetControlBase):
             else:
                 LOG.debug(f"rejection for rid {rid_struct}")
                 self._create_rejection(prq, sim_time)
+
+                LOG.flex(f"rq {rid_struct} declined")
+
         # record cpu time
         dt = round(time.perf_counter() - t0, 5)
         old_dt = self._get_current_dynamic_fleetcontrol_value(sim_time, G_FCTRL_CT_RQU)
@@ -136,6 +144,37 @@ class PoolingInsertionHeuristicOnly(FleetControlBase):
             new_dt = old_dt + dt
         output_dict = {G_FCTRL_CT_RQU: new_dt}
         self._add_to_dynamic_fleetcontrol_output(sim_time, output_dict)
+
+    def plan_print(self, vid : int):
+
+        veh_plan = self.veh_plans[vid]
+
+        if len(veh_plan.list_plan_stops) == 0:
+            return []
+
+        output_list = []
+        tot_wait_time_plan = 0
+        users = 0
+
+        for stop in veh_plan.list_plan_stops:
+
+            stop_list = []
+
+            for rid in stop.boarding_dict.get(1, []):
+                stop_list.append(f"+{rid}: {veh_plan.pax_info[rid][0] - self.rq_dict[rid].rq_time}")
+                tot_wait_time_plan += veh_plan.pax_info[rid][0] - self.rq_dict[rid].rq_time
+                users += 1
+            for rid in stop.boarding_dict.get(-1, []):
+                stop_list.append(f"-{rid}")
+
+            output_list.append(f"{stop.pos[0]}: {stop_list}")
+        
+        if users == 0:
+            return output_list
+        else:
+            return [f"Users: {users} | Avg. wait time: {tot_wait_time_plan / users}"] + output_list
+
+        # return output_list
 
     def user_confirms_booking(self, rid, simulation_time):
         """This method is used to confirm a customer booking. This can trigger some database processes.
@@ -154,7 +193,7 @@ class PoolingInsertionHeuristicOnly(FleetControlBase):
             new_vehicle_plan = self.tmp_assignment[rid]
             vid = new_vehicle_plan.vid
             veh_obj = self.sim_vehicles[vid]
-            self.assign_vehicle_plan(veh_obj, new_vehicle_plan, simulation_time)
+            self.assign_vehicle_plan(veh_obj, new_vehicle_plan, simulation_time, wave_flag=prq.wave_flag)
             del self.tmp_assignment[rid]
 
     def user_cancels_request(self, rid, simulation_time):
@@ -187,6 +226,9 @@ class PoolingInsertionHeuristicOnly(FleetControlBase):
         """
         LOG.debug(f"acknowledge boarding {rid} in {vid} at {simulation_time}")
         self.rq_dict[rid].set_pickup(vid, simulation_time)
+
+        if self.rq_dict[rid].get_wave_flag():
+            self.unhandled_boarded_wave_requests.append(rid)
 
     def acknowledge_alighting(self, rid, vid, simulation_time):
         """This method can trigger some database processes whenever a passenger is finishing to alight a vehicle.
@@ -223,6 +265,32 @@ class PoolingInsertionHeuristicOnly(FleetControlBase):
         self.sim_time = simulation_time
         self.pos_veh_dict = {}  # pos -> list_veh
 
+        # Plan the dropoff for picked up wave requests
+        if len(self.unhandled_boarded_wave_requests) > 0:
+            for rid in self.unhandled_boarded_wave_requests:
+                LOG.flex(f"### rid: {rid} boarded")
+                LOG.flex(f"Before: {self.veh_plans[0].simple_print()}")
+                self.plan_wave_request_dropoff(rid, self.rid_to_assigned_vid[rid], simulation_time)
+                LOG.flex(f"After: {self.veh_plans[0].simple_print()}")
+            self.unhandled_boarded_wave_requests = []
+    
+    def plan_wave_request_dropoff(self, rid, assigned_vid, sim_time):
+        """ Insert the dropoff of a wave request into the VehiclePlan of the Vehicle that picked up the request."""
+
+        prq = self.rq_dict[rid]
+        
+        already_planned = False
+        for stop in self.veh_plans[assigned_vid].list_plan_stops:
+            if prq.rid in stop.get_list_alighting_rids():
+                already_planned = True
+        
+        if not already_planned:
+            list_tuples = immediate_dropoff_insertion_with_heuristics(sim_time, prq, assigned_vid, self)
+            (vehplan, delta_cfv) = min(list_tuples, key=lambda x:x[1])
+            veh_obj = self.sim_vehicles[assigned_vid]
+            self.assign_vehicle_plan(veh_obj, vehplan, sim_time, wave_flag=True)
+
+
     def compute_VehiclePlan_utility(self, simulation_time, veh_obj, vehicle_plan):
         """This method computes the utility of a given plan and returns the value.
 
@@ -253,11 +321,17 @@ class PoolingInsertionHeuristicOnly(FleetControlBase):
         :rtype: TravellerOffer
         """
         if assigned_vehicle_plan is not None:
-            pu_time, do_time = assigned_vehicle_plan.pax_info.get(prq.get_rid_struct())
-            # offer = {G_OFFER_WAIT: pu_time - simulation_time, G_OFFER_DRIVE: do_time - pu_time,
-            #          G_OFFER_FARE: int(prq.init_direct_td * self.dist_fare + self.base_fare)}
-            offer = TravellerOffer(prq.get_rid_struct(), self.op_id, pu_time - prq.rq_time, do_time - pu_time,
-                                   self._compute_fare(simulation_time, prq, assigned_vehicle_plan))
+
+            # In case of wave request, the offer only contains a pickup time
+            if prq.wave_flag:
+                pu_time = assigned_vehicle_plan.pax_info.get(prq.get_rid_struct())[0]
+                offer = TravellerOffer(prq.get_rid_struct(), self.op_id, pu_time - prq.rq_time, LARGE_INT, None)
+            else:
+                pu_time, do_time = assigned_vehicle_plan.pax_info.get(prq.get_rid_struct())
+                # offer = {G_OFFER_WAIT: pu_time - simulation_time, G_OFFER_DRIVE: do_time - pu_time,
+                #          G_OFFER_FARE: int(prq.init_direct_td * self.dist_fare + self.base_fare)}
+                offer = TravellerOffer(prq.get_rid_struct(), self.op_id, pu_time - prq.rq_time, do_time - pu_time,
+                                    self._compute_fare(simulation_time, prq, assigned_vehicle_plan))
             prq.set_service_offered(offer)  # has to be called
         else:
             offer = self._create_rejection(prq, simulation_time)
@@ -284,8 +358,22 @@ class PoolingInsertionHeuristicOnly(FleetControlBase):
                                                                 self.routing_engine, prq, new_lpt, new_ept=new_ept,
                                                                 keep_feasible=True)
 
-    def assign_vehicle_plan(self, veh_obj, vehicle_plan, sim_time, force_assign=False, assigned_charging_task=None, add_arg=None):
-        super().assign_vehicle_plan(veh_obj, vehicle_plan, sim_time, force_assign=force_assign, assigned_charging_task=assigned_charging_task, add_arg=add_arg)
+    def assign_vehicle_plan(self, veh_obj, vehicle_plan, sim_time, force_assign=False, assigned_charging_task=None, add_arg=None, wave_flag=False):
+        # Normal on-demand 
+        if not wave_flag:
+            super().assign_vehicle_plan(veh_obj, vehicle_plan, sim_time, force_assign=force_assign, assigned_charging_task=assigned_charging_task, add_arg=add_arg)
+        else:
+            new_list_vrls = self._build_VRLs(vehicle_plan, veh_obj, sim_time)
+            veh_obj.assign_vehicle_plan(new_list_vrls, sim_time, force_ignore_lock=force_assign)
+            self.veh_plans[veh_obj.vid] = vehicle_plan
+            for rid in list(vehicle_plan.pax_info.keys()):
+                pax_info = vehicle_plan.get_pax_info(rid)
+                if len(pax_info) == 2:
+                    self.rq_dict[rid].set_assigned(pax_info[0], pax_info[1])
+                else:
+                    # Wave request has no drop off yet
+                    self.rq_dict[rid].set_assigned(pax_info[0], float("inf"))
+                    self.rid_to_assigned_vid[rid] = veh_obj.vid
 
     def lock_current_vehicle_plan(self, vid):
         super().lock_current_vehicle_plan(vid)

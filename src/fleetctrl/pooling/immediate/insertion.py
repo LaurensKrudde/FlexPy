@@ -14,6 +14,252 @@ import logging
 LOG = logging.getLogger(__name__)
 
 
+def immediate_pickup_insertion_with_heuristics(
+        sim_time : int, 
+        prq : PlanRequest, 
+        fleetctrl : FleetControlBase
+):
+    """ Insert pickup of wave request into vehicle plan """
+
+    # TODO vehicle selection
+    rv_vehicles = fleetctrl.sim_vehicles
+
+    output_tuples = []
+
+    for veh_obj in rv_vehicles:
+
+        current_veh_plan = fleetctrl.veh_plans[veh_obj.vid]
+        current_veh_plan_utility = fleetctrl.vr_ctrl_f(sim_time, veh_obj, current_veh_plan, fleetctrl.rq_dict, fleetctrl.routing_engine)
+
+        for new_veh_plan in pickup_insert_generator(veh_obj, current_veh_plan, prq, fleetctrl.const_bt, fleetctrl.add_bt, fleetctrl.routing_engine, sim_time):
+
+            new_veh_plan_utility = fleetctrl.vr_ctrl_f(sim_time, veh_obj, new_veh_plan, fleetctrl.rq_dict, fleetctrl.routing_engine)
+            delta_cfv = new_veh_plan_utility - current_veh_plan_utility
+            output_tuples.append((veh_obj.vid, new_veh_plan, delta_cfv)) # TODO if delta_cfv is larger than previous, we don't need to add it to output_tuples
+    
+    return output_tuples
+
+
+def immediate_dropoff_insertion_with_heuristics(
+        sim_time : int, 
+        prq : PlanRequest,
+        assigned_vid : int,
+        fleetctrl : FleetControlBase
+):
+    """ Insert dropoff of wave request into VehiclePlan of vehicle with vid """
+    
+
+    assigned_veh_obj = fleetctrl.sim_vehicles[assigned_vid]
+    current_veh_plan = fleetctrl.veh_plans[assigned_vid]
+
+    current_veh_plan_utility = fleetctrl.vr_ctrl_f(sim_time, assigned_veh_obj, current_veh_plan, fleetctrl.rq_dict, fleetctrl.routing_engine)
+
+    # (veh_plan, delta_cfv) tuples. The request already has a vid assigned.
+    output_tuples = []
+    for new_veh_plan in dropoff_insert_generator(assigned_veh_obj, current_veh_plan, prq, fleetctrl.const_bt, fleetctrl.add_bt, fleetctrl.routing_engine, sim_time):
+        LOG.flex(f"option for dropoff {prq.rid}: {new_veh_plan.simple_print()}")
+        new_veh_plan_utility = fleetctrl.vr_ctrl_f(sim_time, assigned_veh_obj, new_veh_plan, fleetctrl.rq_dict, fleetctrl.routing_engine)
+        delta_cfv = new_veh_plan_utility - current_veh_plan_utility
+        output_tuples.append((new_veh_plan, delta_cfv)) # TODO if delta_cfv is larger than previous, we don't need to add it to output_tuples
+
+    return output_tuples
+
+
+def pickup_insert_generator(
+        veh_obj : SimulationVehicle,
+        original_veh_plan : VehiclePlan, 
+        prq : PlanRequest, 
+        std_bt : int,
+        add_bt : int,
+        routing_engine : NetworkBase,
+        sim_time : int
+):
+    """ Insert only the pickup of PlanRequest into the original VehiclePlan at all possible positions """
+
+    prq_o_stop_pos, _, _ = prq.get_o_stop_info()
+
+    # Iterate over stops in the existing VehiclePlan
+    for i in range(len(original_veh_plan.list_plan_stops)):
+
+        if original_veh_plan.list_plan_stops[i].is_locked() or original_veh_plan.list_plan_stops[i].is_infeasible_locked():
+            continue
+
+        new_veh_plan = original_veh_plan.copy()
+
+        # Try to combine pickup with an existing boarding stop
+        if prq_o_stop_pos == original_veh_plan.list_plan_stops[i].get_pos() and not new_veh_plan.list_plan_stops[i].is_locked_end() and not new_veh_plan.list_plan_stops[i].is_locked():
+            new_veh_plan.list_plan_stops[i] = combine_boarding(prq, original_veh_plan.list_plan_stops[i], std_bt, add_bt)
+            if new_veh_plan.update_tt_and_check_plan(veh_obj, sim_time, routing_engine):
+                yield new_veh_plan
+        
+        # Add the new pickup before the current stop
+        else:
+            new_veh_plan.list_plan_stops[i:i] = [create_boarding_stop(prq, std_bt)]
+            if new_veh_plan.update_tt_and_check_plan(veh_obj, sim_time, routing_engine):
+                yield new_veh_plan
+
+    # Insert pickup at the end of the original VehiclePlan
+    if len(original_veh_plan.list_plan_stops) == 0 or not original_veh_plan.list_plan_stops[-1].is_locked_end():
+        new_veh_plan = original_veh_plan.copy()
+        new_veh_plan.list_plan_stops += [create_boarding_stop(prq, std_bt)]
+        if new_veh_plan.update_tt_and_check_plan(veh_obj, sim_time, routing_engine):
+            yield new_veh_plan
+
+
+def dropoff_insert_generator(
+        veh_obj : SimulationVehicle,
+        original_veh_plan : VehiclePlan, 
+        prq : PlanRequest, 
+        std_bt : int,
+        add_bt : int,
+        routing_engine : NetworkBase,
+        sim_time : int
+):
+    """ Insert only the dropoff of PlanRequest into original VehiclePlan at all possible positions """
+
+    d_stop_pos, _, _ = prq.get_d_stop_info()
+
+    if prq.rid == 98:
+        do_nohting = True
+
+    start_pos = 0
+    check_before_start = True
+    for i in range(len(original_veh_plan.list_plan_stops)):
+        if prq.rid in original_veh_plan.list_plan_stops[i].get_list_boarding_rids():
+            start_pos = i
+            check_before_start = False
+
+    # Iterate over stops in the existing VehiclePlan
+    for i in range(start_pos, len(original_veh_plan.list_plan_stops)):
+
+        if original_veh_plan.list_plan_stops[i].is_locked() or original_veh_plan.list_plan_stops[i].is_infeasible_locked():
+            continue
+
+        new_veh_plan = original_veh_plan.copy()
+
+        # Try to combine dropoff with an existing boarding stop
+        if d_stop_pos == original_veh_plan.list_plan_stops[i].get_pos() and not original_veh_plan.list_plan_stops[i].is_locked_end():
+            new_veh_plan.list_plan_stops[i] = combine_alighting(prq, original_veh_plan.list_plan_stops[i], std_bt, add_bt)
+            if new_veh_plan.update_tt_and_check_plan(veh_obj, sim_time, routing_engine):
+                yield new_veh_plan
+        
+        # Add the new dropoff before the current stop
+        elif not (i == start_pos and not check_before_start):
+            new_veh_plan.list_plan_stops[i:i] = [create_alighting_stop(prq, std_bt)]
+            if new_veh_plan.update_tt_and_check_plan(veh_obj, sim_time, routing_engine):
+                yield new_veh_plan
+    
+    # Insert dropoff at the end of the original VehiclePlan
+    if len(original_veh_plan.list_plan_stops) == 0 or not original_veh_plan.list_plan_stops[-1].is_locked_end():
+        new_veh_plan = original_veh_plan.copy()
+        new_veh_plan.list_plan_stops += [create_alighting_stop(prq, std_bt)]
+        if new_veh_plan.update_tt_and_check_plan(veh_obj, sim_time, routing_engine):
+            yield new_veh_plan
+
+
+def create_boarding_stop(prq, std_bt):
+    """ Create a new BoardingPlanStop for the pickup of a PlanRequest """
+
+    prq_o_stop_pos, prq_t_pu_earliest, prq_t_pu_latest = prq.get_o_stop_info()
+    new_rid = prq.get_rid_struct()
+    
+    return BoardingPlanStop(
+        prq_o_stop_pos, 
+        boarding_dict = {1 : [new_rid]}, 
+        earliest_pickup_time_dict = {new_rid : prq_t_pu_earliest},
+        latest_pickup_time_dict = {new_rid : prq_t_pu_latest}, 
+        change_nr_pax = prq.nr_pax,
+        duration = std_bt
+    )
+
+
+def create_alighting_stop(prq, std_bt):
+    """ Create a new BoardingPlanStop for the dropoff of a PlanRequest """
+
+    prq_d_stop_pos, prq_t_do_latest, prq_max_trip_time = prq.get_d_stop_info()
+    new_rid = prq.get_rid_struct()
+    
+    return BoardingPlanStop(
+        prq_d_stop_pos, 
+        boarding_dict = {-1 : [new_rid]}, 
+        max_trip_time_dict = {new_rid : prq_max_trip_time},
+        change_nr_pax = -prq.nr_pax, 
+        duration = std_bt
+    )
+
+
+def combine_boarding(prq, old_pstop, std_bt, add_bt):
+    """ Combine the pickup of a PlanRequest with existing BoardingPlanStop old_pstop """
+
+    # Get information from PlanRequest
+    prq_o_stop_pos, prq_t_pu_earliest, prq_t_pu_latest = prq.get_o_stop_info()
+    new_rid = prq.get_rid_struct()
+
+    # Combine new pickup with existing boarding stop
+    new_boarding_list = old_pstop.get_list_boarding_rids() + [new_rid]
+    new_boarding_dict = {-1:old_pstop.get_list_alighting_rids(), 1:new_boarding_list}
+    ept_dict, lpt_dict, mtt_dict, lat_dict = old_pstop.get_boarding_time_constraint_dicts()
+    new_earliest_pickup_time_dict = ept_dict.copy()
+    new_earliest_pickup_time_dict[new_rid] = prq_t_pu_earliest
+    new_latest_pickup_time_dict = lpt_dict.copy()
+    new_latest_pickup_time_dict[new_rid] = prq_t_pu_latest
+    stop_duration, _ = old_pstop.get_duration_and_earliest_departure()
+    if stop_duration is None:
+        stop_duration = std_bt
+    else:
+        stop_duration += add_bt
+    change_nr_pax = old_pstop.get_change_nr_pax()
+    change_nr_pax += prq.nr_pax
+    
+    # Return updated BoardingPlanStop with new pickup included
+    return BoardingPlanStop(
+        prq_o_stop_pos, 
+        boarding_dict = new_boarding_dict, 
+        max_trip_time_dict = mtt_dict.copy(),
+        latest_arrival_time_dict = lat_dict.copy(), 
+        earliest_pickup_time_dict = new_earliest_pickup_time_dict,
+        latest_pickup_time_dict = new_latest_pickup_time_dict, 
+        change_nr_pax = change_nr_pax,
+        duration = stop_duration, 
+        change_nr_parcels = old_pstop.get_change_nr_parcels()
+    )
+
+
+def combine_alighting(prq, old_pstop, std_bt, add_bt):
+    """ Combine the dropoff of a PlanRequest with existing BoardingPlanStop old_pstop """
+
+    # Get information from PlanRequest
+    prq_d_stop_pos, prq_t_do_latest, prq_max_trip_time = prq.get_d_stop_info()
+    new_rid = prq.get_rid_struct()
+
+    # Combine new dropoff with existing boarding stop
+    new_alighting_list = old_pstop.get_list_alighting_rids() + [new_rid]
+    new_boarding_dict = {1:old_pstop.get_list_boarding_rids(), -1:new_alighting_list}
+    ept_dict, lpt_dict, mtt_dict, lat_dict = old_pstop.get_boarding_time_constraint_dicts()
+    new_max_trip_time_dict = mtt_dict.copy()
+    new_max_trip_time_dict[new_rid] = prq_max_trip_time
+    stop_duration, _ = old_pstop.get_duration_and_earliest_departure()
+    if stop_duration is None:
+        stop_duration = std_bt
+    else:
+        stop_duration += add_bt
+    change_nr_pax = old_pstop.get_change_nr_pax()
+    change_nr_pax -= prq.nr_pax
+    
+    # Return updated BoardingPlanStop with new dropoff included
+    return BoardingPlanStop(
+        prq_d_stop_pos, 
+        boarding_dict = new_boarding_dict, 
+        max_trip_time_dict = new_max_trip_time_dict,
+        latest_arrival_time_dict = lat_dict.copy(), 
+        earliest_pickup_time_dict = ept_dict.copy(),
+        latest_pickup_time_dict = lpt_dict.copy(), 
+        change_nr_pax = change_nr_pax,
+        duration = stop_duration, 
+        change_nr_parcels = old_pstop.get_change_nr_parcels()
+    )
+
+
 def simple_insert(routing_engine : NetworkBase, sim_time : int, veh_obj : SimulationVehicle, orig_veh_plan : VehiclePlan, 
                   new_prq_obj : PlanRequest, std_bt : int, add_bt : int,
                   skip_first_position_insertion : bool=False) -> List[VehiclePlan]:
@@ -369,6 +615,8 @@ def insertion_with_heuristics(sim_time : int, prq : PlanRequest, fleetctrl : Fle
     """
     if prq.get_reservation_flag():
         return reservation_insertion_with_heuristics(sim_time, prq, fleetctrl, force_feasible_assignment)
+    elif prq.get_wave_flag():
+        return immediate_pickup_insertion_with_heuristics(sim_time, prq, fleetctrl)
     else:
         return immediate_insertion_with_heuristics(sim_time, prq, fleetctrl, force_feasible_assignment)
 

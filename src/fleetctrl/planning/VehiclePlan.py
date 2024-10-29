@@ -462,6 +462,14 @@ class PlanStop(PlanStopBase):
     def __str__(self):
         return f"PS: {self.pos} state {self.state.name} locked {self.locked} bd {self.boarding_dict} earl dep {self._earliest_start_time} latest arr " \
                f"{self._latest_start_time} eta {self._planned_arrival_time}"
+    
+    def board_alight_list(self):
+        output_list = []
+        if len(self.boarding_dict.get(1, [])) > 0:
+            output_list += [f"+{rid}" for rid in self.boarding_dict[1]]
+        if len(self.boarding_dict.get(-1, [])) > 0:
+            output_list += [f"-{rid}" for rid in self.boarding_dict[-1]]
+        return output_list
 
     def is_empty(self) -> bool:
         """ tests if nothing has to be done here and its just a routing target marker (i.e. reloc target)
@@ -564,6 +572,42 @@ class VehiclePlan:
         return "veh plan for vid {} feasible? {} : {} | pax info {}".format(self.vid, self.feasible,
                                                                             [str(x) for x in self.list_plan_stops],
                                                                             self.pax_info)
+    
+    def simple_print(self):
+        return [f"{stop.pos[0]}: {stop.board_alight_list()}" for stop in self.list_plan_stops]
+    
+    def plan_print(self, routing_engine: NetworkBase):
+
+        if len(self.list_plan_stops) == 0:
+            return []
+
+        output_str = []
+
+        c_time = 0
+        c_pos = self.list_plan_stops[0].get_pos()
+
+        for i in range(1, len(self.list_plan_stops)):
+
+            pstop = self.list_plan_stops[i]
+            pstop_pos = pstop.get_pos()
+            _, tt, tdist = routing_engine.return_travel_costs_1to1(c_pos, pstop_pos)
+            c_time += tt
+            c_time += pstop.get_duration_and_earliest_departure()[0]
+            
+            output_str.append(f"{pstop_pos[0]}: {pstop.board_alight_list()} at {c_time} from now")
+            
+
+            c_pos = pstop_pos
+
+        return output_str
+    
+    # def board_alight_list(self):
+    #     output_list = []
+    #     if len(self.boarding_dict.get(1, [])) > 0:
+    #         output_list += [f"+{rid}: {self.earliest_pickup_time_dict[rid]}" for rid in self.boarding_dict[1]]
+    #     if len(self.boarding_dict.get(-1, [])) > 0:
+    #         output_list += [f"-{rid}" for rid in self.boarding_dict[-1]]
+    #     return output_list
 
     def copy(self):
         """
@@ -804,6 +848,11 @@ class VehiclePlan:
         """
         # TODO # think about update of duration of VehicleChargeLegs
         # LOG.debug(f"update tt an check plan {veh_obj} pax {veh_obj.pax} | at {sim_time} | pax info {self.pax_info}")
+
+        # if len(self.list_plan_stops) > 12:
+        #     if self.list_plan_stops[11].boarding_dict == {1: [138]} and self.list_plan_stops[12].boarding_dict == {-1: [138]}:
+        #         donothing = True
+
         is_feasible = True
         if len(self.list_plan_stops) == 0:
             self.pax_info = {}
