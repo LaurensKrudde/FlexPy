@@ -1,9 +1,10 @@
 vtype_name_full,flex_bus
 maximum_passengers,8
 daily_fix_cost [cent],2500
-per_km_cost [cent],25
+per_km_cost [cent],32
 battery_size [kWh],50
 range [km],10000
 source,
 hourly_costs_euro,20.8
 gas_cost_euro_per_km,0.147
+co2_g_per_km,210

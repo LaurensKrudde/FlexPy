@@ -1,5 +1,5 @@
-vtype_name_full,taxi
-maximum_passengers,1
+vtype_name_full,flex_bus_4
+maximum_passengers,4
 daily_fix_cost [cent],2500
 per_km_cost [cent],29
 battery_size [kWh],50
