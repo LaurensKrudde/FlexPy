@@ -26,55 +26,25 @@ def run_single_simulation(scenario_parameters):
     else:
         SF.run()
 
+    # Get regular bus eval and save in results folder
+    bus_file = os.path.join(MAIN_DIR, 'data', 'demand', 'hellevoetsluis', 'regular_bus_eval', f"{scenario_parameters['rq_file'][:-4]}.json")
+    if os.path.isfile(bus_file):
+        with open(bus_file, 'r') as f:
+            bus_stats_dict = json.load(f)
+        with open(os.path.join(MAIN_DIR, 'studies', 'hellevoetsluis', 'results', scenario_parameters['scenario_name'], 'regular_bus_eval.json'), 'w') as f:
+            f.write(json.dumps(bus_stats_dict, indent=4))
+    else:
+        print(f"Regular bus evaluation not found. Skipping ...")
+
 
 def run_scenarios(constant_config_file, scenario_file, n_parallel_sim=1, n_cpu_per_sim=1, evaluate=1, log_level="info",
-                  keep_old=False, continue_next_after_error=False):
-    """
-    This function combines constant study parameters and scenario parameters.
-    Then it sets up a pool of workers and starts a simulation for each scenario.
-    The required parameters are stated in the documentation.
+                  keep_old=False, continue_next_after_error=False, force_run=False):
 
-    :param constant_config_file: this file contains all input parameters that remain constant for a study
-    :type constant_config_file: str
-    :param scenario_file: this file contain all input parameters that are varied for a study
-    :type scenario_file: str
-    :param n_parallel_sim: number of parallel simulation processes
-    :type n_parallel_sim: int
-    :param n_cpu_per_sim: number of cpus for a single simulation
-    :type n_cpu_per_sim: int
-    :param evaluate: 0: no automatic evaluation / != 0 automatic simulation after each simulation
-    :type evaluate: int
-    :param log_level: hierarchical output to the logging file. Possible inputs with hierarchy from low to high:
-            - "verbose": lowest level -> logs everything; even code which could scale exponentially
-            - "debug": standard debugging logger. code which scales exponentially should not be logged here
-            - "info": basic information during simulations (default)
-            - "warning": only logs warnings
-    :type log_level: str
-    :param keep_old: does not start new simulation if result files are already available in scenario output directory
-    :type keep_old: bool
-    :param continue_next_after_error: continue with next simulation if one the simulations threw an error (only SP)
-    :type continue_next_after_error: bool
-    """
-    assert type(n_parallel_sim) == int, "n_parallel_sim must be of type int"
-    # read constant and scenario config files
     constant_cfg = config.ConstantConfig(constant_config_file)
     scenario_cfgs = config.ScenarioConfig(scenario_file)
-
-    # set constant parameters from function arguments
-    # TODO # get study name and check if its a studyname
     const_abs = os.path.abspath(constant_config_file)
     study_name = os.path.basename(os.path.dirname(os.path.dirname(const_abs)))
-
-    if study_name == "scenarios":
-        print("ERROR! The path of the config files is not longer up to date!")
-        print("See documentation/Data_Directory_Structure.md for the updated directory structure needed as input!")
-        exit()
-    if constant_cfg.get(G_STUDY_NAME) is not None and study_name != constant_cfg.get(G_STUDY_NAME):
-        print("ERROR! {} from constant config is not consistent with study directory: {}".format(constant_cfg[G_STUDY_NAME], study_name))
-        print("{} is now given directly by the folder name !".format(G_STUDY_NAME))
-        exit()
     constant_cfg[G_STUDY_NAME] = study_name
-
     constant_cfg["n_cpu_per_sim"] = n_cpu_per_sim
     constant_cfg["evaluate"] = evaluate
     constant_cfg["log_level"] = log_level
@@ -87,14 +57,50 @@ def run_scenarios(constant_config_file, scenario_file, n_parallel_sim=1, n_cpu_p
     # perform simulation(s)
     print(f"Simulation of {len(scenario_cfgs)} scenarios on {n_parallel_sim} processes with {n_cpu_per_sim} cpus per simulation ...")
     if n_parallel_sim == 1:
-        for scenario_cfg in scenario_cfgs:
-            if continue_next_after_error:
-                try:
-                    run_single_simulation(scenario_cfg)
-                except:
-                    traceback.print_exc()
-            else:
+        for i, scenario_cfg in enumerate(scenario_cfgs):
+
+            if force_run:
                 run_single_simulation(scenario_cfg)
+            else:
+                results_already_exists = False
+                results_uptodate = False
+                if os.path.isfile(os.path.join(MAIN_DIR, 'studies', 'hellevoetsluis', 'results', scenario_cfg['scenario_name'], 'regular_bus_eval.json')):
+                    # print(f"Results for {scenario_cfg['scenario_name']} already exist. Checking ...")
+                    results_already_exists = True
+                    
+                    # Check whether simulated demand is equal to current (newest) demand
+                    demand_df = pd.read_csv(os.path.join(MAIN_DIR, 'data', 'demand', 'hellevoetsluis', 'matched', 'hellevoetsluis_network_osm', f"{scenario_cfg['rq_file']}"))
+                    demand_o = [o for o in demand_df['start']] 
+                    demand_d = [d for d in demand_df['end']]
+                    
+                    user_df = pd.read_csv(os.path.join(MAIN_DIR, 'studies', 'hellevoetsluis', 'results', f"{scenario_cfg['scenario_name']}", '1_user-stats.csv')).sort_values(by='request_id')
+                    sim_o = [int(o.split(';')[0]) for o in user_df['start']]
+                    sim_d = [int(d.split(';')[0]) for d in user_df['end']]
+
+                    if demand_o == sim_o and demand_d == sim_d: 
+                        results_uptodate = True
+                    elif len(demand_o) != len(sim_o):
+                        print("Lengths of demand and simulation do not match.")
+                    else:
+                        for i in range(len(demand_o)):
+                            if demand_o[i] != sim_o[i] or demand_d[i] != sim_d[i]:
+                                print(i)
+                                
+                    
+
+                if results_already_exists and results_uptodate:
+                    print(f"Existing results for {scenario_cfg['scenario_name']} are correct. Skipping ...")
+                    continue
+                elif results_already_exists and not results_uptodate:
+                    print(f"Existing results for {scenario_cfg['scenario_name']} are outdated. Running simulation ...")
+                    print("Running scenario {}/{}: {}".format(i + 1, len(scenario_cfgs), scenario_cfg['scenario_name']))
+                    run_single_simulation(scenario_cfg)
+                else:
+                    print(f"No results found for {scenario_cfg['scenario_name']}. Running simulation ...")
+                    print("Running scenario {}/{}: {}".format(i + 1, len(scenario_cfgs), scenario_cfg['scenario_name']))
+                    run_single_simulation(scenario_cfg)
+
+
     else:
         if n_cpu_per_sim == 1:
             mp_pool = mp.Pool(n_parallel_sim)
@@ -134,66 +140,7 @@ MOD_STR = "MoD_0"
 MM_STR = "Assertion"
 LOG_F = "standard_bugfix.log"
 
-
-# testing results of examples
-# ---------------------------
-def read_outputs_for_comparison(constant_csv, scenario_csv):
-    """This function reads some output parameters for a test of meaningful results of the test cases.
-
-    :param constant_csv: constant parameter definition
-    :param scenario_csv: scenario definition
-    :return: list of standard_eval data frames
-    :rtype: list[DataFrame]
-    """
-    constant_cfg = config.ConstantConfig(constant_csv)
-    scenario_cfgs = config.ScenarioConfig(scenario_csv)
-    const_abs = os.path.abspath(constant_csv)
-    study_name = os.path.basename(os.path.dirname(os.path.dirname(const_abs)))
-    return_list = []
-    for scenario_cfg in scenario_cfgs:
-        complete_scenario_cfg = constant_cfg + scenario_cfg
-        scenario_name = complete_scenario_cfg[G_SCENARIO_NAME]
-        output_dir = os.path.join(MAIN_DIR, "studies", study_name, "results", scenario_name)
-        standard_eval_f = os.path.join(output_dir, "standard_eval.csv")
-        tmp_df = pd.read_csv(standard_eval_f, index_col=0)
-        tmp_df.loc[G_SCENARIO_NAME, MOD_STR] = scenario_name
-        return_list.append((tmp_df))
-    return return_list
-
-
-def check_assertions(list_eval_df, all_scenario_assertion_dict):
-    """This function checks assertions of scenarios to give a quick impression if results are fitting.
-
-    :param list_eval_df: list of evaluation data frames
-    :param all_scenario_assertion_dict: dictionary of scenario id to assertion dictionaries
-    :return: list of (scenario_name, mismatch_flag, tmp_df) tuples
-    """
-    list_result_tuples = []
-
-    # For each scenario
-    for sc_id, assertion_dict in all_scenario_assertion_dict.items():
-
-        # Get the scenario evaluation/results DataFrame
-        tmp_df = list_eval_df[sc_id]
-        scenario_name = tmp_df.loc[G_SCENARIO_NAME, MOD_STR]
-        print("-"*80)
-        mismatch = False
-
-        # Check the specified assertions
-        for k, v in assertion_dict.items():
-            if tmp_df.loc[k, MOD_STR] != v:
-                tmp_df.loc[k, MM_STR] = v
-                mismatch = True
-        if mismatch:
-            prt_str = f"Scenario {scenario_name} has mismatch with assertions:\n{tmp_df}\n" + "-"*80 + "\n"
-        else:
-            prt_str = f"Scenario {scenario_name} results match assertions\n" + "-"*80 + "\n"
-        print(prt_str)
-        with open(LOG_F, "a") as fh:
-            fh.write(prt_str)
-        list_result_tuples.append((scenario_name, mismatch, tmp_df))
-    return list_result_tuples
-
+from studies.hellevoetsluis.results.create_overview import create_overview
 
 # -------------------------------------------------------------------------------------------------------------------- #
 if __name__ == "__main__":
@@ -207,25 +154,22 @@ if __name__ == "__main__":
         with open(LOG_F, "w") as _:
             pass
 
-        scs_path = os.path.join(os.path.dirname(__file__), "studies", "hellevoetsluis", "scenarios")
         
-        # Line 91 week test
-        # log_level = "info"
-        # scenario_name = "line91_week.csv"
-        # cc = os.path.join(scs_path, "constant_weekday.csv")
-        # sc = os.path.join(scs_path, scenario_name)
-        # run_scenarios(cc, sc, log_level=log_level, n_cpu_per_sim=1, n_parallel_sim=1)
-        # # list_results = read_outputs_for_comparison(cc, sc)
-        # # all_scenario_assert_dict = {0: {"number users": 88}}
-        # # check_assertions(list_results, all_scenario_assert_dict)
-        # eval_overview = create_eval_overview("hellevoetsluis", scenario_name)
-        # print(eval_overview)
+    # Line 91 week multiple samples
+    study_name = "hellevoetsluis"
+    scs_path = os.path.join(MAIN_DIR, "studies", study_name, "scenarios")
+    log_level = "info"
+    
 
-        # Line 102
-        log_level = "info"
-        scenario_name = "line102_week.csv"
-        cc = os.path.join(scs_path, "constant_weekday.csv")
-        sc = os.path.join(scs_path, scenario_name)
-        run_scenarios(cc, sc, log_level=log_level, n_cpu_per_sim=1, n_parallel_sim=1)
-        eval_overview = create_eval_overview("hellevoetsluis", scenario_name)
-        print(eval_overview)
+
+
+    cc = os.path.join(scs_path, "constant_line91_week.csv")
+    # cc = os.path.join(scs_path, "constant_greater_hellevoetsluis.csv")
+    scenario_file = 'line91_week.csv'
+
+
+
+
+    sc = os.path.join(scs_path, scenario_file)
+    run_scenarios(cc, sc, n_cpu_per_sim=1, n_parallel_sim=1, force_run=False, log_level="info")
+    create_overview(scenario_file)

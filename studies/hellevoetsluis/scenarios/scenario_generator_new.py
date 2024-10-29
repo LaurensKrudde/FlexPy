@@ -10,6 +10,10 @@ DEMAND_DIR = os.path.join(ROOT_DIR, 'data', 'demand', 'hellevoetsluis', 'matched
 AB = {
     "SimpleRepositioning": "SR",
     "flex_bus": "FB",
+    "flex_bus_4": "FB4",
+    "flex_bus_12": "FB12",
+    "flex_bus_16": "FB16",
+    "flex_bus_20": "FB20",
     "taxi": "TX",
     "func_key:IRS_study_standard": "D+WT",
     "func_key:user_times": "UT",
@@ -17,9 +21,23 @@ AB = {
     "func_key:distance_and_user_times_with_walk;vot:0.45": "D+UTW0.45",
 }
 
+veh2cap = {
+    "flex_bus": 8,
+    "flex_bus_4": 4,
+    "flex_bus_12": 12,
+    "flex_bus_16": 16,
+    "flex_bus_20": 20,
+    "taxi": 1,
+}
 
-def create_config_str(opt, wait_time, objective, vehicle_name, n_vehicles):
-    return f"{opt}_{wait_time}_{AB[objective]}_{AB[vehicle_name]}_{n_vehicles}"
+
+def create_config_str(opt, wait_time, objective, vehicle_name, n_vehicles, obj_str=None):
+    if obj_str:
+        return f"{opt}_{wait_time}_{obj_str}_{AB[vehicle_name]}_{n_vehicles}"
+    # elif wait_time == 7200:
+    #     return f"{opt}_{AB[objective]}_{AB[vehicle_name]}_{n_vehicles}"
+    else:
+        return f"{opt}_{wait_time}_{AB[objective]}_{AB[vehicle_name]}_{n_vehicles}"
 
 
 def create_scenarios(scenario_name):
@@ -37,8 +55,8 @@ def create_scenarios(scenario_name):
             for wait_time in config['max_wait_times']:
                 for objective in config['objectives']:
                     for vehicle_name in config['vehicle_types']:
-                        for n_vehicles in config['n_vehicles']:
-                            for a in config['demand_scalars']:
+                        for a in config['demand_scalars']:
+                            for n_vehicles in config['n_vehicles']:
                                 for i in range(config['n_simulations']):
 
                                     d = {}
@@ -56,17 +74,22 @@ def create_scenarios(scenario_name):
                                         d['op_dyn_fs_method'] = 'TimeBasedFS'
                                         d['op_act_fs_file'] = "line91.csv"
                                         d['avg_fs'] = 1.555
+                                    elif n_vehicles == 3 and demand_name == 'line91_week':
+                                        d['op_depot_file'] = 'depots.csv'
+                                        d['op_dyn_fs_method'] = 'TimeBasedFS'
+                                        d['op_act_fs_file'] = "line91.csv"
+                                        d['avg_fs'] = 2.555
                                     elif n_vehicles == 1:
                                         d['avg_fs'] = 1.0
 
                                     if demand_type == "reservation":
                                         # d['rq_type'] = "IndividualConstraintRequest"
                                         d['op_rh_reservation_max_routes'] = 50
-                                        # d['op_short_term_horizon'] = 900
+                                        d['op_short_term_horizon'] = config['op_short_term_horizon']
                                         # d['op_max_wait_time'] = 1800
                                         # d['op_res_approach_buffer_time'] = 30
                                         # d['op_res_assignment_horizon'] = 900
-                                        pass
+                                        
 
                                     elif demand_type == "day_ahead":
                                         # d['op_reservation_module'] = "RollingHorizon"
@@ -93,16 +116,12 @@ def create_scenarios(scenario_name):
                                         d['op_module'] = 'PoolingIRSAssignmentBatchOptimization'
                                         d['sim_env'] = 'ImmediateDecisionsSimulation'
                                         d['user_max_decision_time'] = 0
-                                        # d['op_max_wait_time'] = 1800
-                                        # d['op_max_detour_time_factor'] = 50
                                         d['op_reoptimisation_timestep'] = config['op_reoptimisation_timestep']
                                     elif sim_env == 'BO':
                                         d['op_module'] = 'RidePoolingBatchAssignmentFleetcontrol'
                                         d['sim_env'] = 'BatchOfferSimulation'
                                         d['user_max_decision_time'] = 60
-                                        # d['op_max_wait_time'] = 1800
-                                        # d['op_max_detour_time_factor'] = 40
-                                        # d['op_reoptimisation_timestep'] = 60
+                                        d['op_reoptimisation_timestep'] = config['op_reoptimisation_timestep']
 
 
                                     if demand_type == 'reservation':
@@ -126,6 +145,7 @@ def create_scenarios(scenario_name):
                                     d['demand_scalar'] = a
                                     d['sample'] = f"sample_{i}"
                                     d['config_str'] = configs_str
+                                    d['capacity'] = veh2cap[vehicle_name]
 
                                     scenarios.append(d)
 
@@ -134,4 +154,4 @@ def create_scenarios(scenario_name):
 
 
 if __name__ == "__main__":
-    create_scenarios('max_wait_900_ondemand_vs_reservation')
+    create_scenarios('line91_base_scenarios_3')
